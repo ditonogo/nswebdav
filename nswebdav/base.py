@@ -31,7 +31,7 @@ class ItemList(list):
             content_length = int(response.xpath(".//d:getcontentlength/text()", namespaces=t.nsmap)[0])
             last_modified = datetime.strptime(
                 response.xpath(".//d:getlastmodified/text()", namespaces=t.nsmap)[0],
-                "%a, %d %b %Y %H:%M:%S%Z"
+                "%a, %d %b %Y %H:%M:%S %Z"
             )
             owner = response.xpath(".//d:owner/text()", namespaces=t.nsmap)[0]
             mime_type = response.xpath(".//d:getcontenttype", namespaces=t.nsmap)[0]
