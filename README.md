@@ -14,26 +14,28 @@ To install it:
 
 `pip install nswebdav`
 
-To use it:
+To use sync version, you need `pip install requests` first:
 
-    from nswebdav import NutstoreDav
+    from nswebdav.sync import NutstoreDav
     
     # base_url should be something like "http://www.jianguoyun.com"
     # be ware not to add "/".
     dav =  NutstoreDav(base_url)
+    
     # optional, set global auth_tuple which will be passed to requests.request.
     # but you can still override it in every methods.
     dav.config(auth_tuple)
     
     dav.ls(path)
     
-To use async version:
+To use async version, you need `pip install aiohttp` first:
 
-    from nswebdav import AsyncNutstoreDav
+    from nswebdav.async import AsyncNutstoreDav
         
     # base_url should be something like "http://www.jianguoyun.com"
     # be ware not to add "/".
     dav =  AsyncNutstoreDav(base_url)
+    
     # optional, set global session or auth_tuple.
     # session should be an instance of aiohttp.ClientSession.
     # auth_tuple should be a tuple like (user_name, access_token)

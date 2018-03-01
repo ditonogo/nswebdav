@@ -9,14 +9,14 @@ except(IOError, ImportError):
 setup(
     name='nswebdav',
     packages=find_packages(),
-    version='0.0.2',
+    version='0.0.3',
     license='MIT',
     description='A python implementation for nutstore(jianguoyun) webdav',
     long_description=long_description,
     author='Sraw',
     author_email='lzyl888@gmail.com',
     url='https://github.com/Sraw/nswebdav',
-    download_url='https://github.com/Sraw/nswebdav/tarball/v0.0.2',
+    download_url='https://github.com/Sraw/nswebdav/tarball/v0.0.3',
     keywords="nutstore webdav jianguoyun",
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -26,12 +26,11 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-        'Topic :: Internet'
+        'Topic :: Internet',
     ],
     install_requires=[
         "lxml",
         "jinja2",
-        "requests"
     ],
     python_requires='~=3.5',
 )
