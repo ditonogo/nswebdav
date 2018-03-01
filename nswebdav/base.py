@@ -34,7 +34,7 @@ class ItemList(list):
                 "%a, %d %b %Y %H:%M:%S %Z"
             )
             owner = response.xpath(".//d:owner/text()", namespaces=t.nsmap)[0]
-            mime_type = response.xpath(".//d:getcontenttype", namespaces=t.nsmap)[0]
+            mime_type = response.xpath(".//d:getcontenttype/text()", namespaces=t.nsmap)[0]
 
             readable = bool(response.xpath(".//d:privilege/d:read", namespaces=t.nsmap))
             writable = bool(response.xpath(".//d:privilege/d:write", namespaces=t.nsmap))
