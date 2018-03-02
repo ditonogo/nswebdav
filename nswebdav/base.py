@@ -12,6 +12,13 @@ PERM_MAP = {
 
 
 class NutstoreDavBase:
+    """
+    Base class for both sync subclass and async subclass
+
+    :param base_url: The base url of nutstore website.
+    :param dav_url: The dav url of nutstore website, which is used to access files.
+    :param operation_url: The operation url of nutstore website, which is used to post operations.
+    """
     def __init__(self, base_url, dav_url="/dav", operation_url="/nsdav"):
         self._base_url = base_url
         self._operation_url = operation_url
@@ -19,6 +26,14 @@ class NutstoreDavBase:
 
 
 class ItemList(list):
+    """
+    A class inherited from list. It will be returned by :meth:`nswebdav.sync.NutstoreDav.ls` or
+    :meth:`nswebdav.async.AsyncNutstoreDav.ls` function.
+
+    It works like a normal list, but accepts the xml response of PROPFIND.
+
+    Then parse it into multiple :class:`.Item` s which are dict-like objects.
+    """
     def __init__(self, xml_content):
         super().__init__()
         t = etree.fromstring(xml_content)
@@ -48,6 +63,36 @@ class ItemList(list):
 
 
 class Item(dict):
+    """
+    A class inherited from dict. It respects one result of dav.ls's response.
+
+    It works like a normal dict but values can be accessed as attribute.
+
+    Attributes
+    ----------
+    display_name : str
+        the name of this item.
+    is_dir : bool
+        if this item is a directory.
+    content_length : int
+        the length of this item in bytes, a directory always has 0 length.
+    last_modified : :class:`datetime.datetime`
+        the last time this item was modified.
+    owner : str
+        the owner of this item.
+    mime_type : str
+        the mime type of this item.
+    readable : bool
+        if have read privilege on this item.
+    writable : bool
+        if have write privilege on this item.
+    full_privilege : bool
+        if have full privilege on this item.
+    read_acl : bool
+        if have privilege to read the privilege configuration of this item.
+    write_acl : bool
+        if have privilege to change the privilege configuration of this item.
+    """
     def __init__(self, display_name, is_dir, content_length, last_modified, owner, mime_type, readable,
                  writable, full_privilege, read_acl, write_acl):
         super().__init__(
@@ -80,6 +125,8 @@ class Item(dict):
 
 
 def render_pubObject(path, users, groups, downloadable):
+    users = users or []
+    groups = groups or []
     downloadable = "false" if downloadable else "true"
     template = Template("""
         <?xml version="1.0" encoding="utf-8"?>

@@ -8,45 +8,14 @@ Any help is welcome.
 
 # Usage
 
-Package can only run on python3.5 or above as it uses new key words `async` and `await` for async support.
+While using async version, package can only run on python3.5 or above as it uses new key words `async` and `await` for async support.
 
 To install it:
 
 `pip install nswebdav`
 
-To use sync version, you need `pip install requests` first:
-
-    from nswebdav.sync import NutstoreDav
-    
-    # base_url should be something like "http://www.jianguoyun.com"
-    # be ware not to add "/".
-    dav =  NutstoreDav(base_url)
-    
-    # optional, set global auth_tuple which will be passed to requests.request.
-    # but you can still override it in every methods.
-    dav.config(auth_tuple)
-    
-    dav.ls(path)
-    
-To use async version, you need `pip install aiohttp` first:
-
-    from nswebdav.async import AsyncNutstoreDav
-        
-    # base_url should be something like "http://www.jianguoyun.com"
-    # be ware not to add "/".
-    dav =  AsyncNutstoreDav(base_url)
-    
-    # optional, set global session or auth_tuple.
-    # session should be an instance of aiohttp.ClientSession.
-    # auth_tuple should be a tuple like (user_name, access_token)
-    # but you can still override them in every methods.
-    dav.config(session, auth_tuple)
-    # dav.config(auth_tuple)  # you can set only one of them.
-    
-    dav.ls(path)  # return a corotine, should be "await"ed.
+Here is [documentation](http://nswebdav.readthedocs.io/en/latest/index.html "Documentation for nswebdav").
 
 # TODO
-
-Write document.
 
 Complete more functions.

@@ -12,6 +12,11 @@ class NutstoreDav(NutstoreDavBase):
         self._auth_tuple = None
 
     def config(self, auth_tuple=None):
+        """
+        Config global :code:`auth_tuple`.
+
+        :param auth_tuple: Should be a tuple like :code:`(user_name, access_token)`
+        """
         if auth_tuple:
             self._auth_tuple = auth_tuple
 
@@ -19,6 +24,13 @@ class NutstoreDav(NutstoreDavBase):
         return auth_tuple or self._auth_tuple
 
     def ls(self, path, auth_tuple=None):
+        """
+        List the items under given path.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: :class:`nswebdav.base.ItemList` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
 
         root_url = urljoin(self._base_url, self._dav_url)
@@ -31,6 +43,13 @@ class NutstoreDav(NutstoreDavBase):
         return False
 
     def mkdir(self, path, auth_tuple=None):
+        """
+        Create a directory to given path.
+
+        :param path: The absolute path of directory such as :code:`/path/to/directory`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
 
         root_url = urljoin(self._base_url, self._dav_url)
@@ -43,6 +62,14 @@ class NutstoreDav(NutstoreDavBase):
         return False
 
     def upload(self, content, path, auth_tuple=None):
+        """
+        Upload an object to given path.
+
+        :param content: The bytes of uploaded object.
+        :param path: The absolute path of uploaded object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: "Upload" or "Overwrite" if success else :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
 
         root_url = urljoin(self._base_url, self._dav_url)
@@ -57,6 +84,13 @@ class NutstoreDav(NutstoreDavBase):
         return False
 
     def download(self, path, auth_tuple=None):
+        """
+        Download an object from given path.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: The bytes of object or :code:`None`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
 
         root_url = urljoin(self._base_url, self._dav_url)
@@ -69,6 +103,14 @@ class NutstoreDav(NutstoreDavBase):
         return None
 
     def mv(self, from_path, to_path, auth_tuple=None):
+        """
+        Move or rename a file or directory.
+
+        :param from_path: The original path of object.
+        :param to_path: The destination path of object.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
 
         root_url = urljoin(self._base_url, self._dav_url)
@@ -86,6 +128,14 @@ class NutstoreDav(NutstoreDavBase):
         return False
 
     def cp(self, from_path, to_path, auth_tuple=None):
+        """
+        Copy a file or directory.
+
+        :param from_path: The original path of object.
+        :param to_path: The destination path of object.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
 
         root_url = urljoin(self._base_url, self._dav_url)
@@ -103,6 +153,13 @@ class NutstoreDav(NutstoreDavBase):
         return False
 
     def rm(self, path, auth_tuple=None):
+        """
+        Remove a file or directory.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
 
         root_url = urljoin(self._base_url, self._dav_url)
@@ -115,6 +172,17 @@ class NutstoreDav(NutstoreDavBase):
         return False
 
     def share(self, path, users=None, groups=None, downloadable=True, auth_tuple=None):
+        """
+        Get the share link of given object.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param users: A list contains which users to share as :code:`str`. :code:`None` means everyone.
+        :param groups: A list contains which groups to share as :code:`str` or :code:`int`. :code:`None`
+                       means every group.
+        :param downloadable: If it can be downloaded.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: share link as :code:`str` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
 
         root_url = urljoin(self._base_url, self._operation_url)
@@ -133,6 +201,13 @@ class NutstoreDav(NutstoreDavBase):
         return False
 
     def get_acl(self, path, auth_tuple=None):
+        """
+        Get the privilege configuration of given object.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: A :code:`dict` contains two :code:`dict` "users" and "groups".
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
 
         root_url = urljoin(self._base_url, self._operation_url)

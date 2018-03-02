@@ -13,6 +13,12 @@ class AsyncNutstoreDav(NutstoreDavBase):
         self._auth_tuple = None
 
     def config(self, session=None, auth_tuple=None):
+        """
+        Config global :code:`session` or :code:`auth_tuple`.
+
+        :param session: Should be an :code:`aiohttp.ClientSession`.
+        :param auth_tuple: Should be a tuple like :code:`(user_name, access_token)`
+        """
         if session:
             self._session = session
         if auth_tuple:
@@ -25,6 +31,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
         return session or self._session
 
     async def ls(self, path, auth_tuple=None, session=None):
+        """
+        Coroutine.
+
+        List the items under given path.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param session: The session overriding global config.
+        :return: :class:`nswebdav.base.ItemList` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         session = self._get_session(session)
 
@@ -38,6 +54,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
         return False
 
     async def mkdir(self, path, auth_tuple=None, session=None):
+        """
+        Coroutine.
+
+        Create a directory to given path.
+
+        :param path: The absolute path of directory such as :code:`/path/to/directory`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param session: The session overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         session = self._get_session(session)
 
@@ -51,6 +77,17 @@ class AsyncNutstoreDav(NutstoreDavBase):
         return False
 
     async def upload(self, content, path, auth_tuple=None, session=None):
+        """
+        Coroutine.
+
+        Upload an object to given path.
+
+        :param content: The bytes of uploaded object.
+        :param path: The absolute path of uploaded object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param session: The session overriding global config.
+        :return: "Upload" or "Overwrite" if success else :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         session = self._get_session(session)
 
@@ -66,6 +103,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
         return False
 
     async def download(self, path, auth_tuple=None, session=None):
+        """
+        Coroutine.
+
+        Download an object from given path.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param session: The session overriding global config.
+        :return: The bytes of object or :code:`None`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         session = self._get_session(session)
 
@@ -79,6 +126,17 @@ class AsyncNutstoreDav(NutstoreDavBase):
         return None
 
     async def mv(self, from_path, to_path, auth_tuple=None, session=None):
+        """
+        Coroutine.
+
+        Move or rename a file or directory.
+
+        :param from_path: The original path of object.
+        :param to_path: The destination path of object.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param session: The session overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         session = self._get_session(session)
 
@@ -97,6 +155,17 @@ class AsyncNutstoreDav(NutstoreDavBase):
         return False
 
     async def cp(self, from_path, to_path, auth_tuple=None, session=None):
+        """
+        Coroutine.
+
+        Copy a file or directory.
+
+        :param from_path: The original path of object.
+        :param to_path: The destination path of object.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param session: The session overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         session = self._get_session(session)
 
@@ -115,6 +184,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
         return False
 
     async def rm(self, path, auth_tuple=None, session=None):
+        """
+        Coroutine.
+
+        Remove a file or directory.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param session: The session overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         session = self._get_session(session)
 
@@ -128,6 +207,20 @@ class AsyncNutstoreDav(NutstoreDavBase):
         return False
 
     async def share(self, path, users=None, groups=None, downloadable=True, auth_tuple=None, session=None):
+        """
+        Coroutine.
+
+        Get the share link of given object.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param users: A list contains which users to share as :code:`str`. :code:`None` means everyone.
+        :param groups: A list contains which groups to share as :code:`str` or :code:`int`. :code:`None`
+                       means every group.
+        :param downloadable: If it can be downloaded.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param session: The session overriding global config.
+        :return: share link as :code:`str` or :code:`False`.
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         session = self._get_session(session)
 
@@ -147,6 +240,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
         return False
 
     async def get_acl(self, path, auth_tuple=None, session=None):
+        """
+        Coroutine.
+
+        Get the privilege configuration of given object.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param session: The session overriding global config.
+        :return: A :code:`dict` contains two :code:`dict` "users" and "groups".
+        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         session = self._get_session(session)
 

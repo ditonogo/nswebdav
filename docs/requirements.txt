@@ -1,0 +1,4 @@
+lxml
+jinja2
+aiohttp
+requests
