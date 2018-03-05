@@ -16,7 +16,7 @@ setup(
     author='Sraw',
     author_email='lzyl888@gmail.com',
     url='https://github.com/Sraw/nswebdav',
-    download_url='https://github.com/Sraw/nswebdav/tarball/v0.0.4',
+    download_url='https://github.com/Sraw/nswebdav/tarball/0.0.4',
     keywords="nutstore webdav jianguoyun",
     classifiers=[
         'Development Status :: 3 - Alpha',

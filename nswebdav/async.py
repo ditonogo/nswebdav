@@ -14,7 +14,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
     def config(self, client=None, auth_tuple=None):
         """
-        Config global :code:`session` or :code:`auth_tuple`.
+        Config global :code:`client` or :code:`auth_tuple`.
 
         :param client: Should be an :code:`aiohttp.ClientSession`.
         :param auth_tuple: Should be a tuple like :code:`(user_name, access_token)`
