@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 
 import requests
 
-from nswebdav.base import NutstoreDavBase, ItemList, render_pubObject, render_getSandboxAcl
+from nswebdav.base import NutstoreDavBase, ItemList, render_pubObject, render_getSandboxAcl, render_updateSandboxAcl
 
 
 class NutstoreDav(NutstoreDavBase):
@@ -20,8 +20,11 @@ class NutstoreDav(NutstoreDavBase):
         if auth_tuple:
             self._auth_tuple = auth_tuple
 
-    def _get_auth_tuple(self, auth_tuple):
+    def _get_auth_tuple(self, auth_tuple=None):
         return auth_tuple or self._auth_tuple
+
+    def _get_client(self, client=None):
+        return requests
 
     def ls(self, path, auth_tuple=None):
         """
@@ -31,12 +34,7 @@ class NutstoreDav(NutstoreDavBase):
         :param auth_tuple: The auth_tuple overriding global config.
         :return: :class:`nswebdav.base.ItemList` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = requests.request("PROPFIND", url, auth=auth_tuple)
+        response = self._perform_dav_request("PROPFIND", auth_tuple, None, path=path)
 
         if response.status_code == 207:
             return ItemList(response.content)
@@ -50,12 +48,7 @@ class NutstoreDav(NutstoreDavBase):
         :param auth_tuple: The auth_tuple overriding global config.
         :return: :code:`True` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = requests.request("MKCOL", url, auth=auth_tuple)
+        response = self._perform_dav_request("MKCOL", auth_tuple, None, path=path)
 
         if response.status_code == 201:
             return True
@@ -70,12 +63,7 @@ class NutstoreDav(NutstoreDavBase):
         :param auth_tuple: The auth_tuple overriding global config.
         :return: "Upload" or "Overwrite" if success else :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = requests.request("PUT", url, data=content, auth=auth_tuple)
+        response = self._perform_dav_request("PUT", auth_tuple, None, path=path, data=content)
 
         if response.status_code == 201:
             return "Upload"
@@ -91,12 +79,7 @@ class NutstoreDav(NutstoreDavBase):
         :param auth_tuple: The auth_tuple overriding global config.
         :return: The bytes of object or :code:`None`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = requests.request("GET", url, auth=auth_tuple)
+        response = self._perform_dav_request("GET", auth_tuple, None, path=path)
 
         if response.status_code == 200:
             return response.content
@@ -111,17 +94,7 @@ class NutstoreDav(NutstoreDavBase):
         :param auth_tuple: The auth_tuple overriding global config.
         :return: :code:`True` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        from_url = root_url + from_path
-        to_url = root_url + to_path
-
-        headers = {
-            "Destination": to_url
-        }
-
-        response = requests.request("MOVE", from_url, headers=headers, auth=auth_tuple)
+        response = self._perform_dav_request("MOVE", auth_tuple, None, from_path=from_path, to_path=to_path)
 
         if response.status_code == 201:
             return True
@@ -136,17 +109,7 @@ class NutstoreDav(NutstoreDavBase):
         :param auth_tuple: The auth_tuple overriding global config.
         :return: :code:`True` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        from_url = root_url + from_path
-        to_url = root_url + to_path
-
-        headers = {
-            "Destination": to_url
-        }
-
-        response = requests.request("COPY", from_url, headers=headers, auth=auth_tuple)
+        response = self._perform_dav_request("COPY", auth_tuple, None, from_path=from_path, to_path=to_path)
 
         if response.status_code == 201:
             return True
@@ -160,12 +123,7 @@ class NutstoreDav(NutstoreDavBase):
         :param auth_tuple: The auth_tuple overriding global config.
         :return: :code:`True` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = requests.request("DELETE", url, auth=auth_tuple)
+        response = self._perform_dav_request("DELETE", auth_tuple, None, path=path)
 
         if response.status_code == 204:
             return True
@@ -235,4 +193,29 @@ class NutstoreDav(NutstoreDavBase):
                     group = acl.find("s:group", t.nsmap)
                     results["groups"][group] = perm
             return results
+        return False
+
+    def set_acl(self, path, users=None, groups=None, auth_tuple=None):
+        """
+        Set the privilege configuration of given object.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param users: A list of tuples. Each tuple contains :code:`(user_name, perm)`.
+        :param groups: A list of tuples. Each tuple contains :code:`(group_id, perm)`.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
+        auth_tuple = self._get_auth_tuple(auth_tuple)
+
+        root_url = urljoin(self._base_url, self._operation_url)
+        url = root_url + "/updateSandboxAcl"
+
+        path = self._dav_url + path
+
+        xml = render_updateSandboxAcl(path, users, groups)
+
+        response = requests.request("POST", url, data=xml, auth_tuple=auth_tuple)
+
+        if response.status_code == 200:
+            return True
         return False

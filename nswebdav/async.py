@@ -3,34 +3,34 @@ from urllib.parse import urljoin
 
 import aiohttp
 
-from nswebdav.base import NutstoreDavBase, ItemList, render_pubObject, render_getSandboxAcl
+from nswebdav.base import NutstoreDavBase, ItemList, render_pubObject, render_getSandboxAcl, render_updateSandboxAcl
 
 
 class AsyncNutstoreDav(NutstoreDavBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._session = None
+        self._client = None
         self._auth_tuple = None
 
-    def config(self, session=None, auth_tuple=None):
+    def config(self, client=None, auth_tuple=None):
         """
         Config global :code:`session` or :code:`auth_tuple`.
 
-        :param session: Should be an :code:`aiohttp.ClientSession`.
+        :param client: Should be an :code:`aiohttp.ClientSession`.
         :param auth_tuple: Should be a tuple like :code:`(user_name, access_token)`
         """
-        if session:
-            self._session = session
+        if client:
+            self._client = client
         if auth_tuple:
-            self._auth_tuple = auth_tuple
+            self._auth_tuple = aiohttp.BasicAuth(*auth_tuple)
 
-    def _get_auth_tuple(self, auth_tuple):
+    def _get_auth_tuple(self, auth_tuple=None):
         return aiohttp.BasicAuth(*auth_tuple) if auth_tuple else self._auth_tuple
 
-    def _get_session(self, session):
-        return session or self._session
+    def _get_client(self, client=None):
+        return client or self._client
 
-    async def ls(self, path, auth_tuple=None, session=None):
+    async def ls(self, path, auth_tuple=None, client=None):
         """
         Coroutine.
 
@@ -38,22 +38,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         :param path: The absolute path of object such as :code:`/path/to/directory/object`
         :param auth_tuple: The auth_tuple overriding global config.
-        :param session: The session overriding global config.
+        :param client: The client overriding global config.
         :return: :class:`nswebdav.base.ItemList` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-        session = self._get_session(session)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = await session.request("PROPFIND", url, auth=auth_tuple)
+        response = await self._perform_dav_request("PROPFIND", auth_tuple, client, path=path)
 
         if response.status == 207:
             return ItemList(await response.read())
         return False
 
-    async def mkdir(self, path, auth_tuple=None, session=None):
+    async def mkdir(self, path, auth_tuple=None, client=None):
         """
         Coroutine.
 
@@ -61,22 +55,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         :param path: The absolute path of directory such as :code:`/path/to/directory`
         :param auth_tuple: The auth_tuple overriding global config.
-        :param session: The session overriding global config.
+        :param client: The client overriding global config.
         :return: :code:`True` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-        session = self._get_session(session)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = await session.request("MKCOL", url, auth=auth_tuple)
+        response = await self._perform_dav_request("MKCOL", auth_tuple, client, path=path)
 
         if response.status == 201:
             return True
         return False
 
-    async def upload(self, content, path, auth_tuple=None, session=None):
+    async def upload(self, content, path, auth_tuple=None, client=None):
         """
         Coroutine.
 
@@ -85,16 +73,10 @@ class AsyncNutstoreDav(NutstoreDavBase):
         :param content: The bytes of uploaded object.
         :param path: The absolute path of uploaded object such as :code:`/path/to/directory/object`
         :param auth_tuple: The auth_tuple overriding global config.
-        :param session: The session overriding global config.
+        :param client: The client overriding global config.
         :return: "Upload" or "Overwrite" if success else :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-        session = self._get_session(session)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = await session.request("PUT", url, data=content, auth=auth_tuple)
+        response = await self._perform_dav_request("PUT", auth_tuple, client, path=path, data=content)
 
         if response.status == 201:
             return "Upload"
@@ -102,7 +84,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
             return "Overwrite"
         return False
 
-    async def download(self, path, auth_tuple=None, session=None):
+    async def download(self, path, auth_tuple=None, client=None):
         """
         Coroutine.
 
@@ -110,22 +92,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         :param path: The absolute path of object such as :code:`/path/to/directory/object`
         :param auth_tuple: The auth_tuple overriding global config.
-        :param session: The session overriding global config.
+        :param client: The client overriding global config.
         :return: The bytes of object or :code:`None`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-        session = self._get_session(session)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = await session.request("GET", url, auth=auth_tuple)
+        response = await self._perform_dav_request("GET", auth_tuple, client, path=path)
 
         if response.status == 200:
             return await response.read()
         return None
 
-    async def mv(self, from_path, to_path, auth_tuple=None, session=None):
+    async def mv(self, from_path, to_path, auth_tuple=None, client=None):
         """
         Coroutine.
 
@@ -134,27 +110,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
         :param from_path: The original path of object.
         :param to_path: The destination path of object.
         :param auth_tuple: The auth_tuple overriding global config.
-        :param session: The session overriding global config.
+        :param client: The client overriding global config.
         :return: :code:`True` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-        session = self._get_session(session)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        from_url = root_url + from_path
-        to_url = root_url + to_path
-
-        headers = {
-            "Destination": to_url
-        }
-
-        response = await session.request("MOVE", from_url, headers=headers, auth=auth_tuple)
+        response = await self._perform_dav_request("MOVE", auth_tuple, client, from_path=from_path, to_path=to_path)
 
         if response.status == 201:
             return True
         return False
 
-    async def cp(self, from_path, to_path, auth_tuple=None, session=None):
+    async def cp(self, from_path, to_path, auth_tuple=None, client=None):
         """
         Coroutine.
 
@@ -163,27 +128,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
         :param from_path: The original path of object.
         :param to_path: The destination path of object.
         :param auth_tuple: The auth_tuple overriding global config.
-        :param session: The session overriding global config.
+        :param client: The client overriding global config.
         :return: :code:`True` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-        session = self._get_session(session)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        from_url = root_url + from_path
-        to_url = root_url + to_path
-
-        headers = {
-            "Destination": to_url
-        }
-
-        response = await session.request("COPY", from_url, headers=headers, auth=auth_tuple)
+        response = await self._perform_dav_request("COPY", auth_tuple, client, from_path=from_path, to_path=to_path)
 
         if response.status == 201:
             return True
         return False
 
-    async def rm(self, path, auth_tuple=None, session=None):
+    async def rm(self, path, auth_tuple=None, client=None):
         """
         Coroutine.
 
@@ -191,22 +145,16 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         :param path: The absolute path of object such as :code:`/path/to/directory/object`
         :param auth_tuple: The auth_tuple overriding global config.
-        :param session: The session overriding global config.
+        :param client: The client overriding global config.
         :return: :code:`True` or :code:`False`.
         """
-        auth_tuple = self._get_auth_tuple(auth_tuple)
-        session = self._get_session(session)
-
-        root_url = urljoin(self._base_url, self._dav_url)
-        url = root_url + path
-
-        response = await session.request("DELETE", url, auth=auth_tuple)
+        response = await self._perform_dav_request("DELETE", auth_tuple, client, path=path)
 
         if response.status == 204:
             return True
         return False
 
-    async def share(self, path, users=None, groups=None, downloadable=True, auth_tuple=None, session=None):
+    async def share(self, path, users=None, groups=None, downloadable=True, auth_tuple=None, client=None):
         """
         Coroutine.
 
@@ -218,11 +166,11 @@ class AsyncNutstoreDav(NutstoreDavBase):
                        means every group.
         :param downloadable: If it can be downloaded.
         :param auth_tuple: The auth_tuple overriding global config.
-        :param session: The session overriding global config.
+        :param client: The client overriding global config.
         :return: share link as :code:`str` or :code:`False`.
         """
         auth_tuple = self._get_auth_tuple(auth_tuple)
-        session = self._get_session(session)
+        client = self._get_client(client)
 
         root_url = urljoin(self._base_url, self._operation_url)
         url = root_url + "/pubObject"
@@ -231,7 +179,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         xml = render_pubObject(path, users, groups, downloadable)
 
-        response = await session.request("POST", url, data=xml, auth_tuple=auth_tuple)
+        response = await client.request("POST", url, data=xml, auth_tuple=auth_tuple)
 
         if response.status == 200:
             t = etree.fromstring(await response.read())
@@ -239,7 +187,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
             return share_link
         return False
 
-    async def get_acl(self, path, auth_tuple=None, session=None):
+    async def get_acl(self, path, auth_tuple=None, client=None):
         """
         Coroutine.
 
@@ -247,11 +195,11 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         :param path: The absolute path of object such as :code:`/path/to/directory/object`
         :param auth_tuple: The auth_tuple overriding global config.
-        :param session: The session overriding global config.
+        :param client: The client overriding global config.
         :return: A :code:`dict` contains two :code:`dict` "users" and "groups".
         """
         auth_tuple = self._get_auth_tuple(auth_tuple)
-        session = self._get_session(session)
+        client = self._get_client(client)
 
         root_url = urljoin(self._base_url, self._operation_url)
         url = root_url + "/getSandboxAcl"
@@ -260,7 +208,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         xml = render_getSandboxAcl(path)
 
-        response = await session.request("POST", url, data=xml, auth_tuple=auth_tuple)
+        response = await client.request("POST", url, data=xml, auth_tuple=auth_tuple)
 
         if response.status == 200:
             t = etree.fromstring(await response.read())
@@ -278,4 +226,33 @@ class AsyncNutstoreDav(NutstoreDavBase):
                     group = acl.find("s:group", t.nsmap)
                     results["groups"][group] = perm
             return results
+        return False
+
+    async def set_acl(self, path, users=None, groups=None, auth_tuple=None, client=None):
+        """
+        Coroutine.
+
+        Set the privilege configuration of given object.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param users: A list of tuples. Each tuple contains :code:`(user_name, perm)`.
+        :param groups: A list of tuples. Each tuple contains :code:`(group_id, perm)`.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param client: The client overriding global config.
+        :return: :code:`True` or :code:`False`.
+        """
+        auth_tuple = self._get_auth_tuple(auth_tuple)
+        client = self._get_client(client)
+
+        root_url = urljoin(self._base_url, self._operation_url)
+        url = root_url + "/updateSandboxAcl"
+
+        path = self._dav_url + path
+
+        xml = render_updateSandboxAcl(path, users, groups)
+
+        response = await client.request("POST", url, data=xml, auth_tuple=auth_tuple)
+
+        if response.status == 200:
+            return True
         return False

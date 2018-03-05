@@ -1,3 +1,5 @@
+from urllib.parse import urljoin
+
 from lxml import etree
 from datetime import datetime
 from jinja2 import Template
@@ -23,6 +25,37 @@ class NutstoreDavBase:
         self._base_url = base_url
         self._operation_url = operation_url
         self._dav_url = dav_url
+
+    def _perform_dav_request(self, method, auth_tuple=None, client=None, **kwargs):
+        auth_tuple = self._get_auth_tuple(auth_tuple)
+        client = self._get_client(client)
+        data = kwargs.get("data")
+        headers = None
+        url = None
+
+        path = kwargs.get("path")
+        if path:
+            root_url = urljoin(self._base_url, self._dav_url)
+            url = root_url + path
+
+        from_path = kwargs.get("from_path")
+        to_path = kwargs.get("to_path")
+        if from_path and to_path:
+            root_url = urljoin(self._base_url, self._dav_url)
+            url = root_url + from_path
+            destination = root_url + to_path
+
+            headers = {
+                "Destination": destination
+            }
+
+        return client.request(method, url, data=data, headers=headers, auth=auth_tuple)
+
+    def _get_auth_tuple(self, auth_tuple=None):
+        raise NotImplementedError("Should be implemented in subclass.")
+
+    def _get_client(self, client=None):
+        raise NotImplementedError("Should be implemented in subclass.")
 
 
 class ItemList(list):
@@ -155,4 +188,28 @@ def render_getSandboxAcl(path):
         <s:href>{{ path }}</s:href>
     </s:get_acl>
     """.strip())
+    return template.render(**locals())
+
+
+def render_updateSandboxAcl(path, users, groups):
+    users = users or []
+    groups = groups or []
+    template = Template("""
+            <?xml version="1.0" encoding="utf-8"?>
+            <s:sandbox xmlns:s="http://ns.jianguoyun.com">
+                <s:href>{{ path }}</s:href>
+                {% for user in users %}
+                <s:acl>
+                    <s:username>{{ user[0] }}</s:username>
+                    <s:perm>{{ user[1] }}</s:perm>
+                </s:acl>
+                {% endfor %}
+                {% for group in groups %}
+                <s:acl>
+                    <s:group>{{ group }}</s:group>
+                    <s:perm>{{ group[1] }}</s:perm>
+                </s:acl>
+                {% endfor %}
+            </s:sandbox>
+        """.strip())
     return template.render(**locals())
