@@ -1,10 +1,8 @@
 # Introduction
 
-For now, it is just the beginning of this project.
+This is a python implementation for nutstore(jianguoyun) webdav.
 
-Limited implementation without any test case.
-
-Any help is welcome.
+It implements easy-to-use high-level interface and support both sync version and async version.
 
 # Usage
 
@@ -14,8 +12,10 @@ To install it:
 
 `pip install nswebdav`
 
-Here is [documentation](http://nswebdav.readthedocs.io/en/latest/index.html "Documentation for nswebdav").
+Here is [documentation](http://nswebdav.readthedocs.io/en/stable/ "Documentation for nswebdav").
 
 # TODO
 
 Complete more functions.
+
+Add test cases.
