@@ -1,4 +1,4 @@
-from urllib.parse import urljoin
+from urllib.parse import urljoin, unquote
 
 import requests
 from lxml import etree
@@ -11,12 +11,13 @@ class NutstoreDav(NutstoreDavBase):
         super().__init__(*args, **kwargs)
         self._auth_tuple = None
 
-    def config(self, auth_tuple=None):
+    def config(self, auth_tuple=None, **kwargs):
         """
         Config global :code:`auth_tuple`.
 
         :param auth_tuple: Should be a tuple like :code:`(user_name, access_token)`
         """
+        super().config(**kwargs)
         if auth_tuple:
             self._auth_tuple = auth_tuple
 
@@ -280,6 +281,48 @@ class NutstoreDav(NutstoreDavBase):
                                                    keywords=keywords, path=path)
         if response.status_code == 207:
             return ItemList(response.content, False)
+        return False
+
+    def get_content_url(self, path, platform="desktop", link_type="download", auth_tuple=None):
+        """
+        Get url of given object.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param platform: The platform type of returned object, "desktop" or "mobile".
+        :param link_type: The link type of returned object, "download" or "preview".
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: url of object or :code:`False`.
+        """
+        path = self._dav_url + path
+        response = self._perform_operation_request("directContentUrl", auth_tuple, None,
+                                                   path=path, platform=platform, link_type=link_type)
+        if response.status == 200:
+            t = etree.fromstring(response.content)
+            href = unquote(t.find("s:href", t.nsmap).text)
+            return href
+        return False
+
+    def get_shared_content_url(self, link, platform="desktop", link_type="download", relative_path=None,
+                               password=None, auth_tuple=None):
+        """
+        Get url of given shared object.
+
+        :param link: The share link of object.
+        :param platform: The platform type of returned page, "desktop" or "mobile".
+        :param link_type: The link type of returned page, "download" or "preview".
+        :param relative_path: The relative path of given object. For example, given a directory contains "A.txt"
+                              and "b.txt", relative path as :code:`/A.txt` will get the url of "A.txt".
+        :param password: The password of this shared object, ignore if there isn't password.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :return: url of object or :code:`False`.
+        """
+        response = self._perform_operation_request("directPubContentUrl", auth_tuple, None,
+                                                   link=link, platform=platform, link_type=link_type,
+                                                   relative_path=relative_path, password=password)
+        if response.status == 200:
+            t = etree.fromstring(response.content)
+            href = unquote(t.find("s:href", t.nsmap).text)
+            return href
         return False
 
     def get_user_info(self, auth_tuple=None):

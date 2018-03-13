@@ -33,10 +33,18 @@ class NutstoreDavBase:
     :param operation_url: The operation url of nutstore website, which is used to post operations.
     """
 
-    def __init__(self, base_url, dav_url="/dav", operation_url="/nsdav"):
+    def __init__(self, base_url="https://dav.jianguoyun.com", dav_url="/dav", operation_url="/nsdav"):
         self._base_url = base_url
         self._operation_url = operation_url
         self._dav_url = dav_url
+
+    def config(self, base_url=None, dav_url=None, operation_url=None):
+        if base_url:
+            self._base_url = base_url
+        if dav_url:
+            self._dav_url = dav_url
+        if operation_url:
+            self._operation_url = operation_url
 
     def _perform_dav_request(self, method, auth_tuple=None, client=None, **kwargs):
         auth_tuple = self._get_auth_tuple(auth_tuple)
@@ -434,6 +442,32 @@ def render_search(keywords, path):
     return template.render(**locals())
 
 
+def render_directContentUrl(path, platform, link_type):
+    template = Template("""
+            <?xml version="1.0" encoding="utf-8"?>
+            <s:direct_content_link xmlns:s="http://ns.jianguoyun.com">
+                <s:href>{{ path }}</s:href>
+                <s:platform>{{ platform }}</s:platform>
+                <s:link_type>{{ link_type }}</s:link_type>
+            </s:direct_content_link>
+        """.strip())
+    return template.render(**locals())
+
+
+def render_directPubContentUrl(link, platform, link_type, relative_path, password):
+    template = Template("""
+            <?xml version="1.0" encoding="utf-8"?>
+            <s:direct_content_link xmlns:s="http://ns.jianguoyun.com">
+                <s:href>{{ link }}</s:href>
+                <s:platform>{{ platform }}</s:platform>
+                <s:link_type>{{ link_type }}</s:link_type>
+                {% if relative_path %}<s:relative_path>{{ relative_path }}</s:relative_path>{% endif %}
+                {% if password %}<s:password>{{ password }}</s:password>{% endif %}
+            </s:direct_content_link>
+        """.strip())
+    return template.render(**locals())
+
+
 render_func = {
     "pubObject": render_pubObject,
     "getSandboxAcl": render_getSandboxAcl,
@@ -442,5 +476,7 @@ render_func = {
     "latestDeltaCursor": render_latestDeltaCursor,
     "submitCopyPubObject": render_submitCopyPubObject,
     "pollCopyPubObject": render_pollCopyPubObject,
-    "search": render_search
+    "search": render_search,
+    "directContentUrl": render_directContentUrl,
+    "directPubContentUrl": render_directPubContentUrl
 }

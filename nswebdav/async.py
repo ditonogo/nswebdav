@@ -1,4 +1,4 @@
-from urllib.parse import urljoin
+from urllib.parse import urljoin, unquote
 
 import aiohttp
 from lxml import etree
@@ -12,13 +12,14 @@ class AsyncNutstoreDav(NutstoreDavBase):
         self._client = None
         self._auth_tuple = None
 
-    def config(self, client=None, auth_tuple=None):
+    def config(self, client=None, auth_tuple=None, **kwargs):
         """
         Config global :code:`client` or :code:`auth_tuple`.
 
         :param client: Should be an :code:`aiohttp.ClientSession`.
         :param auth_tuple: Should be a tuple like :code:`(user_name, access_token)`
         """
+        super().config(**kwargs)
         if client:
             self._client = client
         if auth_tuple:
@@ -329,6 +330,54 @@ class AsyncNutstoreDav(NutstoreDavBase):
                                                          keywords=keywords, path=path)
         if response.status == 207:
             return ItemList(await response.read(), False)
+        return False
+
+    async def get_content_url(self, path, platform="desktop", link_type="download", auth_tuple=None, client=None):
+        """
+        Coroutine.
+
+        Get url of given object.
+
+        :param path: The absolute path of object such as :code:`/path/to/directory/object`
+        :param platform: The platform type of returned object, "desktop" or "mobile".
+        :param link_type: The link type of returned object, "download" or "preview".
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param client: The client overriding global config.
+        :return: url of object or :code:`False`.
+        """
+        path = self._dav_url + path
+        response = await self._perform_operation_request("directContentUrl", auth_tuple, client,
+                                                         path=path, platform=platform, link_type=link_type)
+        if response.status == 200:
+            t = etree.fromstring(await response.read())
+            href = unquote(t.find("s:href", t.nsmap).text)
+            return href
+        return False
+
+    async def get_shared_content_url(self, link, platform="desktop", link_type="download", relative_path=None,
+                                     password=None, auth_tuple=None, client=None):
+        """
+        Coroutine.
+
+        Get url of given shared object.
+
+        :param link: The share link of object.
+        :param platform: The platform type of returned page, "desktop" or "mobile".
+        :param link_type: The link type of returned page, "download" or "preview".
+        :param relative_path: The relative path of given object. For example, given a directory contains "A.txt"
+                              and "b.txt", relative path as :code:`/A.txt` will get the url of "A.txt".
+        :param password: The password of this shared object, ignore if there isn't password.
+        :param auth_tuple: The auth_tuple overriding global config.
+        :param client: The client overriding global config.
+        :return: url of object or :code:`False`.
+        """
+        response = await self._perform_operation_request("directPubContentUrl", auth_tuple, client,
+                                                         link=link, platform=platform, link_type=link_type,
+                                                         relative_path=relative_path, password=password)
+        if response.status == 200:
+            t = etree.fromstring(await response.read())
+            href = unquote(t.find("s:href", t.nsmap).text)
+            return href
         return False
 
     async def get_user_info(self, auth_tuple=None, client=None):
