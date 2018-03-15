@@ -1,14 +1,6 @@
 nswebdav
 ========
 
-nswebdav.async module
----------------------
-
-.. automodule:: nswebdav.async
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 nswebdav.base module
 --------------------
 
@@ -32,6 +24,14 @@ nswebdav.base module
 .. autoclass:: nswebdav.base.Entity
     :show-inheritance:
 
+nswebdav.async module
+---------------------
+
+.. automodule:: nswebdav.async
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 nswebdav.sync module
 --------------------
 
@@ -39,3 +39,9 @@ nswebdav.sync module
     :members:
     :undoc-members:
     :show-inheritance:
+
+nswebdav.exceptions module
+--------------------------
+
+.. autoexception:: nswebdav.exceptions.NSWebDavHTTPError
+    :members:
