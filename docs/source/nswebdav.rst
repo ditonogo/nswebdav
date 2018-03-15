@@ -17,6 +17,7 @@ nswebdav.base module
 
 .. autoclass:: nswebdav.base.NutstoreDavBase
     :show-inheritance:
+    :members:
 
 .. autoclass:: nswebdav.base.ItemList
     :show-inheritance:

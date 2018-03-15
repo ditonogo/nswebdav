@@ -15,6 +15,8 @@ class NutstoreDav(NutstoreDavBase):
         """
         Config global :code:`auth_tuple`.
 
+        :code:`kwargs` will be passed to :meth:`nswebdav.base.NutstoreDavBase.config`.
+
         :param auth_tuple: Should be a tuple like :code:`(user_name, access_token)`
         """
         super().config(**kwargs)

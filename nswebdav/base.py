@@ -39,6 +39,13 @@ class NutstoreDavBase:
         self._dav_url = dav_url
 
     def config(self, base_url=None, dav_url=None, operation_url=None):
+        """
+        Overwrite :code:`base_url`, :code:`dav_url` or :code:`operation_url`.
+
+        :param base_url: The base url of nutstore website.
+        :param dav_url: The dav url of nutstore website, which is used to access files.
+        :param operation_url: The operation url of nutstore website, which is used to post operations.
+        """
         if base_url:
             self._base_url = base_url
         if dav_url:

@@ -16,6 +16,8 @@ class AsyncNutstoreDav(NutstoreDavBase):
         """
         Config global :code:`client` or :code:`auth_tuple`.
 
+        :code:`kwargs` will be passed to :meth:`nswebdav.base.NutstoreDavBase.config`.
+
         :param client: Should be an :code:`aiohttp.ClientSession`.
         :param auth_tuple: Should be a tuple like :code:`(user_name, access_token)`
         """
