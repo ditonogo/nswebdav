@@ -4,6 +4,7 @@ import aiohttp
 from lxml import etree
 
 from nswebdav.base import NutstoreDavBase, ItemList, History, User
+from nswebdav.exceptions import NSWebDavHTTPError
 
 
 class AsyncNutstoreDav(NutstoreDavBase):
@@ -48,7 +49,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         if response.status == 207:
             return ItemList(await response.read())
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def mkdir(self, path, auth_tuple=None, client=None):
         """
@@ -65,7 +66,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         if response.status == 201:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def upload(self, content, path, auth_tuple=None, client=None):
         """
@@ -85,7 +86,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
             return "Upload"
         elif response.status == 204:
             return "Overwrite"
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def download(self, path, auth_tuple=None, client=None):
         """
@@ -102,7 +103,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         if response.status == 200:
             return await response.read()
-        return None
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def mv(self, from_path, to_path, auth_tuple=None, client=None):
         """
@@ -120,7 +121,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         if response.status == 201:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def cp(self, from_path, to_path, auth_tuple=None, client=None):
         """
@@ -138,7 +139,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         if response.status == 201:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def rm(self, path, auth_tuple=None, client=None):
         """
@@ -155,7 +156,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         if response.status == 204:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def share(self, path, users=None, groups=None, downloadable=True, auth_tuple=None, client=None):
         """
@@ -181,7 +182,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
             t = etree.fromstring(await response.read())
             share_link = t.find("s:sharelink", t.nsmap).text.strip()
             return share_link
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def get_acl(self, path, auth_tuple=None, client=None):
         """
@@ -214,7 +215,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
                     group = acl.find("s:group", t.nsmap)
                     results["groups"][group.text] = perm.text
             return results
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def set_acl(self, path, users=None, groups=None, auth_tuple=None, client=None):
         """
@@ -235,7 +236,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         if response.status == 200:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def get_history(self, folder, cursor=None, auth_tuple=None, client=None):
         """
@@ -253,7 +254,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
                                                          folder=folder, cursor=cursor)
         if response.status == 200:
             return History(await response.read())
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def get_latest_cursor(self, folder, auth_tuple=None, client=None):
         """
@@ -271,7 +272,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
         if response.status == 200:
             t = etree.fromstring(await response.read())
             return int(t.find("s:cursor", t.nsmap).text, 16)
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def cp_shared_object(self, path, url, password=None, auth_tuple=None, client=None):
         """
@@ -292,7 +293,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
         if response.status == 201:
             t = etree.fromstring(await response.read())
             return t.find("s:copy_uuid", t.nsmap).text
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def poll_cp(self, copy_uuid, auth_tuple=None, client=None):
         """
@@ -312,7 +313,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
             return "In process"
         elif response.status == 200:
             return "Complete"
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def search(self, keywords, path, auth_tuple=None, client=None):
         """
@@ -332,7 +333,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
                                                          keywords=keywords, path=path)
         if response.status == 207:
             return ItemList(await response.read(), False)
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def get_content_url(self, path, platform="desktop", link_type="download", auth_tuple=None, client=None):
         """
@@ -354,7 +355,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
             t = etree.fromstring(await response.read())
             href = unquote(t.find("s:href", t.nsmap).text)
             return href
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def get_shared_content_url(self, link, platform="desktop", link_type="download", relative_path=None,
                                      password=None, auth_tuple=None, client=None):
@@ -380,7 +381,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
             t = etree.fromstring(await response.read())
             href = unquote(t.find("s:href", t.nsmap).text)
             return href
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())
 
     async def get_user_info(self, auth_tuple=None, client=None):
         """
@@ -401,4 +402,4 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         if response.status == 200:
             return User(await response.read())
-        return False
+        raise NSWebDavHTTPError(response.status, await response.read())

@@ -4,6 +4,7 @@ import requests
 from lxml import etree
 
 from nswebdav.base import NutstoreDavBase, ItemList, History, User
+from nswebdav.exceptions import NSWebDavHTTPError
 
 
 class NutstoreDav(NutstoreDavBase):
@@ -41,7 +42,7 @@ class NutstoreDav(NutstoreDavBase):
 
         if response.status_code == 207:
             return ItemList(response.content)
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def mkdir(self, path, auth_tuple=None):
         """
@@ -55,7 +56,7 @@ class NutstoreDav(NutstoreDavBase):
 
         if response.status_code == 201:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def upload(self, content, path, auth_tuple=None):
         """
@@ -72,7 +73,7 @@ class NutstoreDav(NutstoreDavBase):
             return "Upload"
         elif response.status_code == 204:
             return "Overwrite"
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def download(self, path, auth_tuple=None):
         """
@@ -86,7 +87,7 @@ class NutstoreDav(NutstoreDavBase):
 
         if response.status_code == 200:
             return response.content
-        return None
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def mv(self, from_path, to_path, auth_tuple=None):
         """
@@ -101,7 +102,7 @@ class NutstoreDav(NutstoreDavBase):
 
         if response.status_code == 201:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def cp(self, from_path, to_path, auth_tuple=None):
         """
@@ -116,7 +117,7 @@ class NutstoreDav(NutstoreDavBase):
 
         if response.status_code == 201:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def rm(self, path, auth_tuple=None):
         """
@@ -130,7 +131,7 @@ class NutstoreDav(NutstoreDavBase):
 
         if response.status_code == 204:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def share(self, path, users=None, groups=None, downloadable=True, auth_tuple=None):
         """
@@ -153,7 +154,7 @@ class NutstoreDav(NutstoreDavBase):
             t = etree.fromstring(response.content)
             share_link = t.find("s:sharelink", t.nsmap).text.strip()
             return share_link
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_acl(self, path, auth_tuple=None):
         """
@@ -183,7 +184,7 @@ class NutstoreDav(NutstoreDavBase):
                     group = acl.find("s:group", t.nsmap)
                     results["groups"][group.text] = perm.text
             return results
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def set_acl(self, path, users=None, groups=None, auth_tuple=None):
         """
@@ -201,7 +202,7 @@ class NutstoreDav(NutstoreDavBase):
 
         if response.status_code == 200:
             return True
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_history(self, folder, cursor=None, auth_tuple=None):
         """
@@ -216,7 +217,7 @@ class NutstoreDav(NutstoreDavBase):
                                                    folder=folder, cursor=cursor)
         if response.status_code == 200:
             return History(response.content)
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_latest_cursor(self, folder, auth_tuple=None):
         """
@@ -231,7 +232,7 @@ class NutstoreDav(NutstoreDavBase):
         if response.status_code == 200:
             t = etree.fromstring(response.content)
             return int(t.find("s:cursor", t.nsmap).text, 16)
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def cp_shared_object(self, path, url, password=None, auth_tuple=None):
         """
@@ -249,7 +250,7 @@ class NutstoreDav(NutstoreDavBase):
         if response.status_code == 201:
             t = etree.fromstring(response.content)
             return t.find("s:copy_uuid", t.nsmap).text
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def poll_cp(self, copy_uuid, auth_tuple=None):
         """
@@ -266,7 +267,7 @@ class NutstoreDav(NutstoreDavBase):
             return "In process"
         elif response.status_code == 200:
             return "Complete"
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def search(self, keywords, path, auth_tuple=None):
         """
@@ -283,7 +284,7 @@ class NutstoreDav(NutstoreDavBase):
                                                    keywords=keywords, path=path)
         if response.status_code == 207:
             return ItemList(response.content, False)
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_content_url(self, path, platform="desktop", link_type="download", auth_tuple=None):
         """
@@ -298,11 +299,11 @@ class NutstoreDav(NutstoreDavBase):
         path = self._dav_url + path
         response = self._perform_operation_request("directContentUrl", auth_tuple, None,
                                                    path=path, platform=platform, link_type=link_type)
-        if response.status == 200:
+        if response.status_code == 200:
             t = etree.fromstring(response.content)
             href = unquote(t.find("s:href", t.nsmap).text)
             return href
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_shared_content_url(self, link, platform="desktop", link_type="download", relative_path=None,
                                password=None, auth_tuple=None):
@@ -321,11 +322,11 @@ class NutstoreDav(NutstoreDavBase):
         response = self._perform_operation_request("directPubContentUrl", auth_tuple, None,
                                                    link=link, platform=platform, link_type=link_type,
                                                    relative_path=relative_path, password=password)
-        if response.status == 200:
+        if response.status_code == 200:
             t = etree.fromstring(response.content)
             href = unquote(t.find("s:href", t.nsmap).text)
             return href
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_user_info(self, auth_tuple=None):
         """
@@ -343,4 +344,4 @@ class NutstoreDav(NutstoreDavBase):
 
         if response.status_code == 200:
             return User(response.content)
-        return False
+        raise NSWebDavHTTPError(response.status_code, response.content)
