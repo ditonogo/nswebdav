@@ -3,6 +3,18 @@ from lxml.etree import XMLSyntaxError
 
 
 class NSWebDavHTTPError(Exception):
+    """
+    Contains HTTP error's information.
+
+    Attributes
+    ----------
+    code : int
+        status code of HTTP error.
+    message : str
+        contains message which is extracted from server's xml response.
+    detail : str
+        contains detail message which is extracted from server's xml response.
+    """
     def __init__(self, code, content):
         message, detail = self._parse_response(content)
         self.code = code

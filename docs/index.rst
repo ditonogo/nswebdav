@@ -6,51 +6,46 @@
 Documentation for nswebdav
 ==========================
 
-This is a python implementation for nutstore(jianguoyun) webdav.
+This is a python implementation for `nutstore(jianguoyun) <https://www.jianguoyun.com>`_ webdav.
 
 It implements easy-to-use high-level interface and support both sync version and async version.
 
-The sync version needs :code:`requests` and async version needs :code:`aiohttp`.
+The sync version needs `requests <http://docs.python-requests.org/en/master>`_
+while async version needs `aiohttp <https://aiohttp.readthedocs.io/en/stable>`_.
 You need to install either of them manually.
 
 To install it:
 
-:code:`pip install nswebdav`
+``pip install nswebdav``
 
-To use sync version, you need :code:`pip install requests` first:
+To use sync version, you need ``pip install requests`` first:
 
 .. code-block:: python
 
    from nswebdav.sync import NutstoreDav
 
+   # Will connect to https://dav.jianguoyun.com by default,
+   # but you can overwrite it by passing arg base_url.
    # base_url should be something like "http://www.jianguoyun.com"
    # be ware not to add "/".
-   dav =  NutstoreDav(base_url)
+   dav = NutstoreDav()
 
-   # optional, set global auth_tuple which will be passed to requests.request.
-   # but you can still override it in every methods.
-   dav.config(auth_tuple)
+   dav.ls("/")
 
-   dav.ls(path)
-
-To use async version, you need :code:`pip install aiohttp` first:
+To use async version, you need ``pip install aiohttp`` first:
 
 .. code-block:: python
 
    from nswebdav.async import AsyncNutstoreDav
+   import asyncio
 
+   # Will connect to https://dav.jianguoyun.com by default,
+   # but you can overwrite it by passing arg base_url.
    # base_url should be something like "http://www.jianguoyun.com"
    # be ware not to add "/".
-   dav =  AsyncNutstoreDav(base_url)
+   dav = AsyncNutstoreDav()
 
-   # optional, set global session or auth_tuple.
-   # session should be an instance of aiohttp.ClientSession.
-   # auth_tuple should be a tuple like (user_name, access_token)
-   # but you can still override them in every methods.
-   dav.config(session, auth_tuple)
-   # dav.config(auth_tuple)  # you can set only one of them.
-
-   dav.ls(path)  # return a corotine, should be "await"ed.
+   asyncio.get_event_loop.run_until_complete(dav.ls("/"))
 
 .. toctree::
    :maxdepth: 2

@@ -8,31 +8,21 @@ from nswebdav.exceptions import NSWebDavHTTPError
 
 
 class AsyncNutstoreDav(NutstoreDavBase):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._client = None
-        self._auth_tuple = None
+    """
+    An implementation which supports async usage.
 
-    def config(self, client=None, auth_tuple=None, **kwargs):
-        """
-        Config global :code:`client` or :code:`auth_tuple`.
+    By default, ``auth_tuple`` is :obj:`None`, you need to config it by calling :meth:`.config`
+    or by passing a tuple in every methods.
 
-        :code:`kwargs` will be passed to :meth:`nswebdav.base.NutstoreDavBase.config`.
-
-        :param client: Should be an :code:`aiohttp.ClientSession`.
-        :param auth_tuple: Should be a tuple like :code:`(user_name, access_token)`
-        """
-        super().config(**kwargs)
-        if client:
-            self._client = client
-        if auth_tuple:
-            self._auth_tuple = aiohttp.BasicAuth(*auth_tuple)
+    There is a default client :class:`aiohttp.ClientSession`, but you can still overwrite it by calling :meth:`.config`
+    or passing a custom one in every methods.
+    """
+    def __init__(self, base_url="https://dav.jianguoyun.com", dav_url="/dav", operation_url="/nsdav"):
+        super().__init__(base_url, dav_url, operation_url)
+        self._client = aiohttp.ClientSession()
 
     def _get_auth_tuple(self, auth_tuple=None):
-        return aiohttp.BasicAuth(*auth_tuple) if auth_tuple else self._auth_tuple
-
-    def _get_client(self, client=None):
-        return client or self._client
+        return aiohttp.BasicAuth(*(auth_tuple or self._auth_tuple))
 
     async def ls(self, path, auth_tuple=None, client=None):
         """
@@ -40,11 +30,24 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         List the items under given path.
 
-        :param path: The absolute path of object such as :code:`/path/to/directory/object`
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: :class:`nswebdav.base.ItemList`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as ``/path/to/directory/object``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.ItemList`
+            A list-like object contains items.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_dav_request("PROPFIND", auth_tuple, client, path=path)
 
@@ -58,11 +61,24 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Create a directory to given path.
 
-        :param path: The absolute path of directory such as :code:`/path/to/directory`
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: :code:`True`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        path : str
+            The absolute path of directory such as ``/path/to/directory``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_dav_request("MKCOL", auth_tuple, client, path=path)
 
@@ -76,12 +92,26 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Upload an object to given path.
 
-        :param content: The bytes of uploaded object.
-        :param path: The absolute path of uploaded object such as :code:`/path/to/directory/object`
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: "Upload" or "Overwrite".
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        content : bytes
+            The bytes of uploaded object.
+        path : str
+            The absolute path of directory such as ``/path/to/directory``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            "Upload" or "Overwrite".
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_dav_request("PUT", auth_tuple, client, path=path, data=content)
 
@@ -97,11 +127,24 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Download an object from given path.
 
-        :param path: The absolute path of object such as :code:`/path/to/directory/object`
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: The bytes of object.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        path : str
+            The absolute path of directory such as ``/path/to/directory``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bytes
+            The bytes of object.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_dav_request("GET", auth_tuple, client, path=path)
 
@@ -115,12 +158,26 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Move or rename a file or directory.
 
-        :param from_path: The original path of object.
-        :param to_path: The destination path of object.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: :code:`True`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        from_path : str
+            The original path of object.
+        to_path : str
+            The destination path of object.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_dav_request("MOVE", auth_tuple, client, from_path=from_path, to_path=to_path)
 
@@ -134,12 +191,26 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Copy a file or directory.
 
-        :param from_path: The original path of object.
-        :param to_path: The destination path of object.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: :code:`True`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        from_path : str
+            The original path of object.
+        to_path : str
+            The destination path of object.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_dav_request("COPY", auth_tuple, client, from_path=from_path, to_path=to_path)
 
@@ -153,11 +224,24 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Remove a file or directory.
 
-        :param path: The absolute path of object such as :code:`/path/to/directory/object`
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: :code:`True`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        path : str
+            The absolute path of directory such as ``/path/to/directory``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_dav_request("DELETE", auth_tuple, client, path=path)
 
@@ -171,15 +255,30 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Get the share link of given object.
 
-        :param path: The absolute path of object such as :code:`/path/to/directory/object`
-        :param users: A list contains which users to share as :code:`str`. :code:`None` means everyone.
-        :param groups: A list contains which groups to share as :code:`str` or :code:`int`. :code:`None`
-                       means every group.
-        :param downloadable: If it can be downloaded.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: share link as :code:`str`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        path : str
+            The absolute path of directory such as ``/path/to/directory``
+        users : list
+            A list contains which users to share as :obj:`str`. :obj:`None` means everyone.
+        groups : list
+            A list contains which groups to share as :obj:`str` or :obj:`int`. :obj:`None` means every group.
+        downloadable : bool
+            If it can be downloaded.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            Share link.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         path = self._dav_url + path
         response = await self._perform_operation_request("pubObject", auth_tuple, client,
@@ -198,11 +297,24 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Get the privilege configuration of given object.
 
-        :param path: The absolute path of object such as :code:`/path/to/directory/object`
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: A :code:`dict` contains two :code:`dict` "users" and "groups".
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        path : str
+            The absolute path of directory such as ``/path/to/directory``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        dict
+            Contains two :obj:`dict` "users" and "groups".
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         path = self._dav_url + path
         response = await self._perform_operation_request("getSandboxAcl", auth_tuple, client,
@@ -232,13 +344,28 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Set the privilege configuration of given object.
 
-        :param path: The absolute path of object such as :code:`/path/to/directory/object`
-        :param users: A list of tuples. Each tuple contains :code:`(user_name, perm)`.
-        :param groups: A list of tuples. Each tuple contains :code:`(group_id, perm)`.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: :code:`True`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        path : str
+            The absolute path of directory such as ``/path/to/directory``
+        users : list
+            A list of tuples. Each tuple contains :code:`(user_name, perm)`.
+        groups : list
+            A list of tuples. Each tuple contains :code:`(group_id, perm)`.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         path = self._dav_url + path
         response = await self._perform_operation_request("updateSandboxAcl", auth_tuple, client,
@@ -254,12 +381,26 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Get the history of given top folder.
 
-        :param folder: The top folder.
-        :param cursor: The cursor of history in int. Will return the histories after cursor.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: :class:`nswebdav.base.History`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        folder : str
+            The top folder.
+        cursor : int
+            The cursor of history in :obj:`int`. Will return the histories after cursor.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.History`
+            A list-like object contains history item.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_operation_request("delta", auth_tuple, client,
                                                          folder=folder, cursor=cursor)
@@ -273,11 +414,24 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Get the latest history cursor.
 
-        :param folder: The top folder.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: cursor in :code:`int`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        folder : str
+            The top folder.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        int
+            Latest cursor.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_operation_request("latestDeltaCursor", auth_tuple, client,
                                                          folder=folder)
@@ -292,13 +446,28 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Submit background copying a shared object to given path.
 
-        :param path: The absolute path of object such as :code:`/path/to/directory/object`
-        :param url: The url of shared object.
-        :param password: The password of this shared object, ignore if there isn't password.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: The uuid of this copy operation, used to query operation status later.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as :code:`/path/to/directory/object`.
+        url : str
+            The url of shared object.
+        password : str
+            The password of this shared object, ignore if there isn't password.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            The uuid of this copy operation, used to query operation status later.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_operation_request("submitCopyPubObject", auth_tuple, client,
                                                          path=path, url=url, password=password)
@@ -314,11 +483,24 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Query the state of background copy operation.
 
-        :param copy_uuid: The uuid returned from :meth:`.cp_shared_object`.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: "In process" or "Complete".
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        copy_uuid : str
+            The uuid returned from :meth:`.cp_shared_object`.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            "In process" or "Complete".
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self. _perform_operation_request("pollCopyPubObject", auth_tuple, client,
                                                           copy_uuid=copy_uuid)
@@ -335,12 +517,26 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Use keywords to search files.
 
-        :param keywords: A list of keywords in str. Each keyword should be at least two length.
-        :param path: The absolute path to search. It can be an empty string to search every place.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: :class:`nswebdav.base.ItemList`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        keywords : list
+            A list of keywords in str. Each keyword should be at least two length.
+        path : str
+            The absolute path to search. It can be an empty string to search every place.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.ItemList`
+            A list-like object contains items.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         if path:
             path = self._dav_url + path
@@ -356,13 +552,28 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Get url of given object.
 
-        :param path: The absolute path of object such as :code:`/path/to/directory/object`
-        :param platform: The platform type of returned object, "desktop" or "mobile".
-        :param link_type: The link type of returned object, "download" or "preview".
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: url of object.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as :code:`/path/to/directory/object`.
+        platform : str
+            The platform type of returned object, "desktop" or "mobile".
+        link_type : str
+            The link type of returned object, "download" or "preview".
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            url of object.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         path = self._dav_url + path
         response = await self._perform_operation_request("directContentUrl", auth_tuple, client,
@@ -380,16 +591,33 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Get url of given shared object.
 
-        :param link: The share link of object.
-        :param platform: The platform type of returned page, "desktop" or "mobile".
-        :param link_type: The link type of returned page, "download" or "preview".
-        :param relative_path: The relative path of given object. For example, given a directory contains "A.txt"
-                              and "b.txt", relative path as :code:`/A.txt` will get the url of "A.txt".
-        :param password: The password of this shared object, ignore if there isn't password.
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: url of object.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        link : str
+            The share link of object.
+        platform : str
+            The platform type of returned object, "desktop" or "mobile".
+        link_type : str
+            The link type of returned object, "download" or "preview".
+        relative_path : str
+            The relative path of given object. For example, given a directory contains "A.txt" and "b.txt",
+            relative path as ``/A.txt`` will get the url of "A.txt".
+        password : str
+            The password of this shared object, ignore if there isn't password.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            url of object.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         response = await self._perform_operation_request("directPubContentUrl", auth_tuple, client,
                                                          link=link, platform=platform, link_type=link_type,
@@ -406,10 +634,22 @@ class AsyncNutstoreDav(NutstoreDavBase):
 
         Get user's information.
 
-        :param auth_tuple: The auth_tuple overriding global config.
-        :param client: The client overriding global config.
-        :return: :class:`nswebdav.base.User`.
-        :raises NSWebDavHTTPError: Contains HTTP error code, message and detail.
+        Parameters
+        ----------
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.User`
+            An object contains user's information.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         client = self._get_client(client)

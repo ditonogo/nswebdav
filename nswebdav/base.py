@@ -28,24 +28,48 @@ class NutstoreDavBase:
     """
     Base class for both sync subclass and async subclass
 
-    :param base_url: The base url of nutstore website.
-    :param dav_url: The dav url of nutstore website, which is used to access files.
-    :param operation_url: The operation url of nutstore website, which is used to post operations.
+    Parameters
+    ----------
+    base_url : str
+        The base url of nutstore website.
+    dav_url : str
+        The dav url of nutstore website, which is used to access files.
+    operation_url: str
+        The operation url of nutstore website, which is used to post operations.
     """
 
-    def __init__(self, base_url="https://dav.jianguoyun.com", dav_url="/dav", operation_url="/nsdav"):
+    def __init__(self, base_url, dav_url, operation_url):
         self._base_url = base_url
         self._operation_url = operation_url
         self._dav_url = dav_url
+        self._client = None
+        self._auth_tuple = None
 
-    def config(self, base_url=None, dav_url=None, operation_url=None):
+    def config(self, client=None, auth_tuple=None, base_url=None, dav_url=None, operation_url=None):
         """
-        Overwrite :code:`base_url`, :code:`dav_url` or :code:`operation_url`.
+        Used to overwrite ``base_url``, ``dav_url`` or ``operation_url``.
 
-        :param base_url: The base url of nutstore website.
-        :param dav_url: The dav url of nutstore website, which is used to access files.
-        :param operation_url: The operation url of nutstore website, which is used to post operations.
+        Or use custom ``client`` and config global ``auth_tuple``.
+
+        Parameters
+        ----------
+        client : :class:`aiohttp.ClientSession` or :class:`requests.Session`
+            A client used to send request.
+            :class:`aiohttp.ClientSession` for async version,
+            :class:`requests.Session` for sync version.
+        auth_tuple : tuple
+            Should be a tuple like ``(user_name, access_token)``
+        base_url : str
+            The base url of nutstore website.
+        dav_url : str
+            The dav url of nutstore website, which is used to access files.
+        operation_url : str
+            The operation url of nutstore website, which is used to post operations.
         """
+        if client:
+            self._client = client
+        if auth_tuple:
+            self._auth_tuple = auth_tuple
         if base_url:
             self._base_url = base_url
         if dav_url:
@@ -93,7 +117,7 @@ class NutstoreDavBase:
         raise NotImplementedError("Should be implemented in subclass.")
 
     def _get_client(self, client=None):
-        raise NotImplementedError("Should be implemented in subclass.")
+        return client or self._client
 
 
 class ItemList(list):
@@ -195,10 +219,10 @@ class History(list):
     """
     Contains multiple :class:`.Entity` s which are dict-like objects.
 
-    History itself has the following values:
+    History itself has the following attributes:
 
     reset : bool
-        if histories are continuous, if is :code:`False`, all histories should be ignored and post again.
+        if histories are continuous, if is :obj:`False`, all histories should be ignored and post again.
 
         :code:`reset is False` may caused by remote internal server error.
     cursor : int
@@ -206,9 +230,9 @@ class History(list):
     has_more : bool
         if histories are complete or there are more histories.
 
-        if :code:`True`, you can call :code:`get_history` with :code:`cursor` to get the histories from :code:`cursor`.
+        if :obj:`True`, you can call ``get_history`` with ``cursor`` to get the histories from ``cursor``.
 
-    Each Entity has the following values:
+    Each Entity has the following attributes:
 
     path : str
         the path of this item.
@@ -222,8 +246,6 @@ class History(list):
         The date of this operation.
     revision : int
         which revision of this operation.
-
-    methods:
     """
     def __init__(self, xml_content):
         super().__init__()
@@ -256,9 +278,10 @@ class History(list):
         """
         Call this function to get next cursor.
 
-        Or get :code:`False` if there is no more history.
-
-        :return: :code:`int` or :code:`False`.
+        Returns
+        -------
+        :obj:`int` or :obj:`False`
+            Next cursor or :obj:`False` if there isn't more history.
         """
         if self.has_more:
             return self.cursor
@@ -279,13 +302,13 @@ class User(Entity):
         the account state of user. Could be "free_trial_team_edition", "advanced_team_edition",
         "preminum_team_edition", "standard_team_edition" or "frozen".
     team_id : int
-        the team id of user. :code:`None` if state equals to "frozen".
+        the team id of user. :obj:`None` if state equals to "frozen".
     storage_quota : int
-        the total storage quota in bytes. :code:`None` if state equals to "frozen".
+        the total storage quota in bytes. :obj:`None` if state equals to "frozen".
     used_storage : int
-        the used storage space in bytes. :code:`None` if state equals to "frozen".
+        the used storage space in bytes. :obj:`None` if state equals to "frozen".
     expire_time : int
-        the left active time in milliseconds. :code:`None` if state equals to "frozen".
+        the left active time in milliseconds. :obj:`None` if state equals to "frozen".
     collections : list
         a list contains all top folders. Each folder is an instance of :class:`.Entity` and
         has:
