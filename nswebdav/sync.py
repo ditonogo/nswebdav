@@ -24,6 +24,9 @@ class NutstoreDav(NutstoreDavBase):
     def _get_auth_tuple(self, auth_tuple=None):
         return auth_tuple or self._auth_tuple
 
+    def close(self):
+        self._client.close()
+
     def ls(self, path, auth_tuple=None, client=None):
         """
         List the items under given path.
