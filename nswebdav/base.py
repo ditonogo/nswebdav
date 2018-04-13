@@ -67,6 +67,7 @@ class NutstoreDavBase:
             The operation url of nutstore website, which is used to post operations.
         """
         if client:
+            self.close()
             self._client = client
         if auth_tuple:
             self._auth_tuple = auth_tuple
@@ -76,6 +77,12 @@ class NutstoreDavBase:
             self._dav_url = dav_url
         if operation_url:
             self._operation_url = operation_url
+
+    def close(self):
+        """
+        Used to close underlying client.
+        """
+        raise NotImplementedError("Should be implemented in subclass.")
 
     def _perform_dav_request(self, method, auth_tuple=None, client=None, **kwargs):
         auth_tuple = self._get_auth_tuple(auth_tuple)
@@ -141,7 +148,7 @@ class ItemList(list):
     mime_type : str
         the mime type of this item.
     resource_perm : str
-        the privilege of this tiem in str.
+        the privilege of this item in str.
     readable : bool
         if have read privilege on this item.
     writable : bool

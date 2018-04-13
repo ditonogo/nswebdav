@@ -1,6 +1,7 @@
 from urllib.parse import urljoin, unquote
 
 import aiohttp
+import asyncio
 from lxml import etree
 
 from nswebdav.base import NutstoreDavBase, ItemList, History, User
@@ -19,10 +20,14 @@ class AsyncNutstoreDav(NutstoreDavBase):
     """
     def __init__(self, base_url="https://dav.jianguoyun.com", dav_url="/dav", operation_url="/nsdav"):
         super().__init__(base_url, dav_url, operation_url)
-        self._client = aiohttp.ClientSession()
+        loop = asyncio.get_event_loop()
+        self._client = aiohttp.ClientSession(loop=loop)
 
     def _get_auth_tuple(self, auth_tuple=None):
         return aiohttp.BasicAuth(*(auth_tuple or self._auth_tuple))
+
+    def close(self):
+        self._client.loop.run_until_complete(self._client.close())
 
     async def ls(self, path, auth_tuple=None, client=None):
         """
@@ -64,7 +69,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
         Parameters
         ----------
         path : str
-            The absolute path of directory such as ``/path/to/directory``
+            The absolute path of object such as ``/path/to/directory/object``
         auth_tuple : tuple
             The auth_tuple overriding global config.
         client : :class:`aiohttp.ClientSession`
@@ -97,7 +102,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
         content : bytes
             The bytes of uploaded object.
         path : str
-            The absolute path of directory such as ``/path/to/directory``
+            The absolute path of object such as ``/path/to/directory/object``
         auth_tuple : tuple
             The auth_tuple overriding global config.
         client : :class:`aiohttp.ClientSession`
@@ -130,7 +135,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
         Parameters
         ----------
         path : str
-            The absolute path of directory such as ``/path/to/directory``
+            The absolute path of object such as ``/path/to/directory/object``
         auth_tuple : tuple
             The auth_tuple overriding global config.
         client : :class:`aiohttp.ClientSession`
@@ -227,7 +232,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
         Parameters
         ----------
         path : str
-            The absolute path of directory such as ``/path/to/directory``
+            The absolute path of object such as ``/path/to/directory/object``
         auth_tuple : tuple
             The auth_tuple overriding global config.
         client : :class:`aiohttp.ClientSession`
@@ -258,7 +263,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
         Parameters
         ----------
         path : str
-            The absolute path of directory such as ``/path/to/directory``
+            The absolute path of object such as ``/path/to/directory/object``
         users : list
             A list contains which users to share as :obj:`str`. :obj:`None` means everyone.
         groups : list
@@ -300,7 +305,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
         Parameters
         ----------
         path : str
-            The absolute path of directory such as ``/path/to/directory``
+            The absolute path of object such as ``/path/to/directory/object``
         auth_tuple : tuple
             The auth_tuple overriding global config.
         client : :class:`aiohttp.ClientSession`
@@ -347,7 +352,7 @@ class AsyncNutstoreDav(NutstoreDavBase):
         Parameters
         ----------
         path : str
-            The absolute path of directory such as ``/path/to/directory``
+            The absolute path of object such as ``/path/to/directory/object``
         users : list
             A list of tuples. Each tuple contains :code:`(user_name, perm)`.
         groups : list
