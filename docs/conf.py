@@ -44,7 +44,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
-    "sphinxcontrib.asyncio"
+    "sphinxcontrib_trio"
 ]
 
 intersphinx_mapping = {'python': ('https://docs.python.org/3', None),
@@ -167,3 +167,10 @@ texinfo_documents = [
      author, 'nswebdav', 'One line description of project.',
      'Miscellaneous'),
 ]
+
+autodoc_member_order = 'bysource'
+
+from sphinx.pycode.parser import VariableCommentPicker
+
+if not hasattr(VariableCommentPicker, "visit_AsyncFunctionDef"):
+    VariableCommentPicker.visit_AsyncFunctionDef = VariableCommentPicker.visit_FunctionDef

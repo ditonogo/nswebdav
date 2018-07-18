@@ -13,7 +13,8 @@ aiohttp = "*"
 pypandoc = "*"
 sphinx = "*"
 sphinx-rtd-theme = "*"
-sphinxcontrib-asyncio = "*"
+twine = "*"
+sphinxcontrib-trio = "*"
 
 [requires]
 python_version = "3.6"
