@@ -2,4 +2,5 @@ lxml
 jinja2
 aiohttp
 requests
-sphinx==1.7.2
+sphinx==1.7.6
+sphinxcontrib-asyncio

@@ -1,20 +1,19 @@
 nswebdav
 ========
 
-nswebdav.base module
---------------------
+Common
+------
 
-.. autodata:: nswebdav.base.PERM_MAP
+.. autodata:: nswebdav.constants.PERM_MAP
     :annotation:
 
-.. autoclass:: nswebdav.base.ItemList
+.. autodata:: nswebdav.constants.OPERATION_TYPE
+    :annotation:
 
-.. autoclass:: nswebdav.base.History
+.. autoclass:: nswebdav.parse.Entity
+
+.. autoexception:: nswebdav.exceptions.NSWebDavHTTPError
     :members:
-
-.. autoclass:: nswebdav.base.User
-
-.. autoclass:: nswebdav.base.Entity
 
 nswebdav.async module
 ---------------------
@@ -31,9 +30,3 @@ nswebdav.sync module
     :members:
     :undoc-members:
     :inherited-members:
-
-nswebdav.exceptions module
---------------------------
-
-.. autoexception:: nswebdav.exceptions.NSWebDavHTTPError
-    :members:

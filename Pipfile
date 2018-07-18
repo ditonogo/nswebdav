@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+
+[dev-packages]
+lxml = "*"
+"jinja2" = "*"
+requests = "*"
+aiohttp = "*"
+pypandoc = "*"
+sphinx = "*"
+sphinx-rtd-theme = "*"
+sphinxcontrib-asyncio = "*"
+
+[requires]
+python_version = "3.6"

@@ -12,13 +12,15 @@ It implements easy-to-use high-level interface and support both sync version and
 
 The sync version needs `requests <http://docs.python-requests.org/en/master>`_
 while async version needs `aiohttp <https://aiohttp.readthedocs.io/en/stable>`_.
-You need to install either of them manually.
+You need to install either of them manually if you install by ``pip install nswebdav``.
 
-To install it:
+But you can directly install the version you want:
 
-``pip install nswebdav``
+``pip install nswebdav[sync]`` for sync version
 
-To use sync version, you need ``pip install requests`` first:
+``pip install nswebdav[async]`` for async version
+
+Sync version:
 
 .. code-block:: python
 
@@ -29,10 +31,11 @@ To use sync version, you need ``pip install requests`` first:
    # base_url should be something like "http://www.jianguoyun.com"
    # be ware not to add "/".
    dav = NutstoreDav()
+   dav.config(auth_tuple=(user_name, access_token))
 
    dav.ls("/")
 
-To use async version, you need ``pip install aiohttp`` first:
+Async version:
 
 .. code-block:: python
 
@@ -44,12 +47,15 @@ To use async version, you need ``pip install aiohttp`` first:
    # base_url should be something like "http://www.jianguoyun.com"
    # be ware not to add "/".
    dav = AsyncNutstoreDav()
+   dav.config(auth_tuple=(user_name, access_token))
 
-   asyncio.get_event_loop.run_until_complete(dav.ls("/"))
+   asyncio.get_event_loop().run_until_complete(dav.ls("/"))
+
+To develop, clone this project from github and use ``pipenv install --dev``.
 
 .. toctree::
    :maxdepth: 2
-   :caption: APIs:
+   :caption: API:
 
    source/nswebdav
 
