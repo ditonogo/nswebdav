@@ -147,7 +147,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -172,7 +172,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -199,7 +199,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -224,7 +224,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -251,7 +251,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -278,7 +278,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -303,7 +303,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -334,7 +334,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -378,7 +378,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -407,7 +407,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -462,7 +462,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -487,7 +487,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -516,7 +516,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -541,7 +541,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -579,7 +579,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -608,7 +608,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -643,7 +643,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -702,7 +702,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -731,7 +731,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -769,7 +769,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -807,7 +807,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -836,7 +836,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -879,7 +879,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -910,7 +910,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -966,7 +966,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -999,7 +999,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -1028,7 +1028,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -1059,7 +1059,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -1084,7 +1084,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
@@ -1111,7 +1111,7 @@ class NutstoreDavBase:
         Raises
         ------
         :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
+            Contains HTTP error code, exception and message.
         """
         raise NotImplementedError
 
