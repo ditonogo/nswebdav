@@ -3,4 +3,4 @@ jinja2
 aiohttp
 requests
 sphinx==1.7.6
-sphinxcontrib-asyncio
+sphinxcontrib-trio
