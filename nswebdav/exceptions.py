@@ -10,34 +10,31 @@ class NSWebDavHTTPError(Exception):
     ----------
     code : int
         status code of HTTP error.
+    exception : str
+        contains exception which is extracted from server's xml response.
     message : str
-        contains message which is extracted from server's xml response.
-    detail : str
         contains detail message which is extracted from server's xml response.
     """
     def __init__(self, code, content):
-        message, detail = self._parse_response(content)
+        exception, message = self._parse_response(content)
         self.code = code
+        self.exception = exception
         self.message = message
-        self.detail = detail
 
     def __str__(self):
-        if self.detail:
-            return "%s %s\ndetail: %s" % (self.code, self.message, self.detail)
-        else:
-            return "%s %s" % (self.code, self.message)
+        return "%s %s\nmessage: %s" % (self.code, self.exception or "Empty exception", self.message or "Empty message")
 
     def _parse_response(self, response):
         try:
             t = etree.fromstring(response)
         except XMLSyntaxError:
             return None, None
-        message = t.find("s:exception", t.nsmap)
+        exception = t.find("s:exception", t.nsmap)
+        if exception is not None:
+            exception = exception.text
+        message = t.find("s:message", t.nsmap)
         if message is not None:
             message = message.text
-        detail = t.find("s:message", t.nsmap)
-        if detail is not None:
-            detail = detail.text
-        return message, detail
+        return exception, message
 
     __repr__ = __str__

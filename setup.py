@@ -32,5 +32,9 @@ setup(
         "lxml",
         "jinja2",
     ],
+    extras_require={
+        "sync": ["requests"],
+        "async": ["aiohttp"],
+    },
     python_requires='~=3.5',
 )

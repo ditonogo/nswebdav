@@ -1,27 +1,6 @@
-from datetime import datetime
-from urllib.parse import urljoin, unquote
+from urllib.parse import urljoin, quote
 
-from jinja2 import Template
-from lxml import etree
-
-#: This is a map of permission's number and its corresponding meanings.
-#:
-#: ================ =================================================================
-#: number as string meanings
-#: ================ =================================================================
-#: "1"              download and preview
-#: "2"              upload
-#: "3"              upload, download, preview, remove and move
-#: "4"              upload, download, preview, remove, move and change acls of others
-#: "5"              preview
-#: ================ =================================================================
-PERM_MAP = {
-    "1": "download and preview",
-    "2": "upload",
-    "3": "upload, download, preview, remove and move",
-    "4": "upload, download, preview, remove, move and change acls of others",
-    "5": "preview"
-}
+from nswebdav.render import render_func
 
 
 class NutstoreDavBase:
@@ -101,7 +80,7 @@ class NutstoreDavBase:
         if from_path and to_path:
             root_url = urljoin(self._base_url, self._dav_url)
             url = root_url + from_path
-            destination = root_url + to_path
+            destination = root_url + quote(to_path)
 
             headers = {
                 "Destination": destination
@@ -126,394 +105,1069 @@ class NutstoreDavBase:
     def _get_client(self, client=None):
         return client or self._client
 
-
-class ItemList(list):
-    """
-    Contains multiple :class:`.Entity` s which are dict-like objects.
-
-    Each Entity has the following values:
-
-    href : str
-        the relative url of this item.
-    display_name : str
-        the name of this item.
-    is_dir : bool
-        if this item is a directory.
-    content_length : int
-        the length of this item in bytes, a directory always has 0 length.
-    last_modified : :class:`datetime.datetime`
-        the last time this item was modified.
-    owner : str
-        the owner of this item.
-    mime_type : str
-        the mime type of this item.
-    resource_perm : str
-        the privilege of this item in str.
-    readable : bool
-        if have read privilege on this item.
-    writable : bool
-        if have write privilege on this item.
-    full_privilege : bool
-        if have full privilege on this item.
-    read_acl : bool
-        if have privilege to read the privilege configuration of this item.
-    write_acl : bool
-        if have privilege to change the privilege configuration of this item.
-    """
-
-    def __init__(self, xml_content, ls=True):
-        super().__init__()
-        t = etree.fromstring(xml_content)
-
-        responses = t.xpath(".//d:response", namespaces=t.nsmap)
-
-        for response in responses:
-            href = unquote(response.xpath(".//d:href/text()", namespaces=t.nsmap)[0])
-            display_name = response.xpath(".//d:displayname/text()", namespaces=t.nsmap)[0] if ls else None
-            is_dir = bool(response.xpath(".//d:resourcetype/d:collection", namespaces=t.nsmap))
-            content_length = int(response.xpath(".//d:getcontentlength/text()", namespaces=t.nsmap)[0]) if ls else None
-            last_modified = datetime.strptime(
-                response.xpath(".//d:getlastmodified/text()", namespaces=t.nsmap)[0],
-                "%a, %d %b %Y %H:%M:%S %Z"
-            )
-            owner = response.xpath(".//d:owner/text()", namespaces=t.nsmap)[0]
-            mime_type = response.xpath(".//d:getcontenttype/text()", namespaces=t.nsmap)[0]
-
-            readable = bool(response.xpath(".//d:privilege/d:read", namespaces=t.nsmap)) if ls else None
-            writable = bool(response.xpath(".//d:privilege/d:write", namespaces=t.nsmap)) if ls else None
-            full_privilege = bool(response.xpath(".//d:privilege/d:all", namespaces=t.nsmap)) if ls else None
-            read_acl = bool(response.xpath(".//d:privilege/d:read_acl", namespaces=t.nsmap)) if ls else None
-            write_acl = bool(response.xpath(".//d:privilege/d:write_acl", namespaces=t.nsmap)) if ls else None
-            resource_perm = response.xpath(".//s:resourceperm/text()", namespaces=t.nsmap)[0] if not ls else None
-
-            item = Entity(href=href,
-                          display_name=display_name,
-                          is_dir=is_dir,
-                          content_length=content_length,
-                          last_modified=last_modified,
-                          owner=owner,
-                          mime_type=mime_type,
-                          readable=readable,
-                          writable=writable,
-                          full_privilege=full_privilege,
-                          read_acl=read_acl,
-                          write_acl=write_acl,
-                          resource_perm=resource_perm)
-            self.append(item)
-
-
-class Entity(dict):
-    """
-    It works like a normal dict but values can be accessed as attribute.
-    """
-
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError:
-            raise AttributeError("No such key '%s'" % name)
-
-    __setattr__ = dict.__setitem__
-
-    def __delattr__(self, name):
-        try:
-            del self[name]
-        except KeyError:
-            raise AttributeError("No such key '%s'" % name)
-
-
-class History(list):
-    """
-    Contains multiple :class:`.Entity` s which are dict-like objects.
-
-    History itself has the following attributes:
-
-    reset : bool
-        if histories are continuous, if is :obj:`False`, all histories should be ignored and post again.
-
-        :code:`reset is False` may caused by remote internal server error.
-    cursor : int
-        cursor of the last history.
-    has_more : bool
-        if histories are complete or there are more histories.
-
-        if :obj:`True`, you can call ``get_history`` with ``cursor`` to get the histories from ``cursor``.
-
-    Each Entity has the following attributes:
-
-    path : str
-        the path of this item.
-    size : int
-        The size of this item represented in bytes.
-    is_deleted : bool
-        if this operation is deletion.
-    is_dir : bool
-        if this item is a directory.
-    modified : :class:`datetime.datetime`
-        The date of this operation.
-    revision : int
-        which revision of this operation.
-    """
-    def __init__(self, xml_content):
-        super().__init__()
-        t = etree.fromstring(xml_content)
-
-        self.reset = t.find("s:reset", t.nsmap).text == "true"
-        self.cursor = int(t.find("s:cursor", t.nsmap).text, 16)
-        self.has_more = t.find("s:hasMore", t.nsmap).text == "true"
-        entries = t.findall("s:delta/s:entry", t.nsmap)
-
-        for entry in entries:
-            path = entry.xpath(".//s:path/text()", namespaces=t.nsmap)[0]
-            size = int(entry.xpath(".//s:size/text()", namespaces=t.nsmap)[0])
-            is_deleted = entry.xpath(".//s:isDeleted/text()", namespaces=t.nsmap)[0] == "true"
-            is_dir = entry.xpath(".//s:isDir/text()", namespaces=t.nsmap)[0] == "true"
-            modified = datetime.strptime(
-                entry.xpath(".//s:modified/text()", namespaces=t.nsmap)[0],
-                "%a, %d %b %Y %H:%M:%S %Z"
-            )
-            revision = int(entry.xpath(".//s:revision/text()", namespaces=t.nsmap)[0])
-            item = Entity(path=path,
-                          size=size,
-                          is_deleted=is_deleted,
-                          is_dir=is_dir,
-                          modified=modified,
-                          revision=revision)
-            self.append(item)
-
-    def next(self):
+    def ls(self, path, auth_tuple=None, client=None):
         """
-        Call this function to get next cursor.
+        List the items under given path.
+
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as ``/path/to/directory/object``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
 
         Returns
         -------
-        :obj:`int` or :obj:`False`
-            Next cursor or :obj:`False` if there isn't more history.
+        :obj:`list`
+            A list contains :class:`.Entity` with the following values:
+
+            ================ ============================ =========================================
+            Key              Type                         Description
+            ---------------- ---------------------------- -----------------------------------------
+            href             str                          The relative url of this item.
+            display_name     str                          The name of this item.
+            is_dir           bool                         If this item is a directory.
+            content_length   int                          The length of this item in bytes.
+                                                          A directory always has 0 length.
+            last_modified    float                        The last time this item was modified in Unix timestamp.
+            owner            str                          The owner of this item.
+            mime_type        str                          The mime type of this item.
+            resource_perm    str                          the privilege of this item in str.
+            readable         bool                         If have read privilege on this item.
+            writable         bool                         If have write privilege on this item.
+            full_privilege   bool                         If have full privilege on this item.
+            read_acl         bool                         If have privilege to read the privilege
+                                                          configuration of this item.
+            write_acl        bool                         If have privilege to change the privilege
+                                                          configuration of this item.
+            ================ ============================ =========================================
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
         """
-        if self.has_more:
-            return self.cursor
-        return False
+        raise NotImplementedError
 
+    def mkdir(self, path, auth_tuple=None, client=None):
+        """
+        Create a directory to given path.
 
-class User(Entity):
-    """
-    It works like a normal dict but values can be accessed as attribute.
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as ``/path/to/directory/object``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
 
-    It has the following values.
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
 
-    user_name : str
-        the user name.
-    is_admin : bool
-        if this user is admin of this team.
-    state : str
-        the account state of user. Could be "free_trial_team_edition", "advanced_team_edition",
-        "preminum_team_edition", "standard_team_edition" or "frozen".
-    team_id : int
-        the team id of user. :obj:`None` if state equals to "frozen".
-    storage_quota : int
-        the total storage quota in bytes. :obj:`None` if state equals to "frozen".
-    used_storage : int
-        the used storage space in bytes. :obj:`None` if state equals to "frozen".
-    expire_time : int
-        the left active time in milliseconds. :obj:`None` if state equals to "frozen".
-    collections : list
-        a list contains all top folders. Each folder is an instance of :class:`.Entity` and
-        has:
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
 
-        :code:`href`: the absolute path of this top folder.
+    def upload(self, content, path, auth_tuple=None, client=None):
+        """
+        Upload an object to given path.
 
-        :code:`used_storage`: the used storage space in bytes of this top folder.
+        Parameters
+        ----------
+        content : bytes
+            The bytes of uploaded object.
+        path : str
+            The absolute path of object such as ``/path/to/directory/object``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
 
-        :code:`owner`: if user is the owner of this top folder.
-    """
-    def __init__(self, xml_content):
-        t = etree.fromstring(xml_content)
-        user_name = t.find("s:username", t.nsmap).text
-        is_admin = None
-        state = t.find("s:account_state", t.nsmap).text
-        team_id = None
-        storage_quota = None
-        used_storage = None
-        expire_time = None
-        if state != "frozen":
-            _is_admin = t.find("s:team/s:is_admin", t.nsmap)
-            if _is_admin is not None:
-                is_admin = _is_admin.text == "true"
-            team_id = int(t.find("s:team/s:id", t.nsmap).text)
-            storage_quota = int(t.find("s:storage_quota", t.nsmap).text)
-            used_storage = int(t.find("s:used_storage", t.nsmap).text)
-            expire_time = int(t.find("s:expire_time", t.nsmap).text)
-        _collections = t.findall("s:collection", t.nsmap)
+        Returns
+        -------
+        str
+            "Upload" or "Overwrite".
 
-        collections = []
-        for _collection in _collections:
-            _href = _collection.xpath(".//s:href/text()", namespaces=t.nsmap)[0]
-            _used_storage = int(_collection.xpath(".//s:used_storage/text()", namespaces=t.nsmap)[0])
-            _owner = _collection.xpath(".//s:owner/text()", namespaces=t.nsmap)[0] == "true"
-            collection = Entity(href=_href,
-                                used_storage=_used_storage,
-                                owner=_owner)
-            collections.append(collection)
-        super().__init__(user_name=user_name,
-                         is_admin=is_admin,
-                         state=state,
-                         team_id=team_id,
-                         storage_quota=storage_quota,
-                         used_storage=used_storage,
-                         expire_time=expire_time,
-                         collections=collections)
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
 
+    def download(self, path, auth_tuple=None, client=None):
+        """
+        Download an object from given path.
 
-def render_pubObject(path, users, groups, downloadable):
-    users = users or []
-    groups = groups or []
-    downloadable = "false" if downloadable else "true"
-    template = Template("""
-        <?xml version="1.0" encoding="utf-8"?>
-        <s:publish xmlns:s="http://ns.jianguoyun.com">
-            <s:href>{{ path }}</s:href>
-            {% if users or groups %}
-            <s:acl>
-            {% for user in users %}
-                <s:username>{{ user }}</s:username>
-            {% endfor %}
-            {% for group in groups %}
-                <s:group>{{ group }}</s:group>
-            {% endfor %}
-            </s:acl>
-            {% endif %}
-            <s:downloadDisabled>{{ downloadable }}</s:downloadDisabled>
-        </s:publish>
-    """.strip())
-    return template.render(**locals())
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as ``/path/to/directory/object``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
 
+        Returns
+        -------
+        bytes
+            The bytes of object.
 
-def render_getSandboxAcl(path):
-    template = Template("""
-    <?xml version="1.0" encoding="utf-8"?>
-    <s:get_acl xmlns:s="http://ns.jianguoyun.com">
-        <s:href>{{ path }}</s:href>
-    </s:get_acl>
-    """.strip())
-    return template.render(**locals())
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
 
+    def mv(self, from_path, to_path, auth_tuple=None, client=None):
+        """
+        Move or rename a file or directory.
 
-def render_updateSandboxAcl(path, users, groups):
-    users = users or []
-    groups = groups or []
-    template = Template("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <s:sandbox xmlns:s="http://ns.jianguoyun.com">
-                <s:href>{{ path }}</s:href>
-                {% for user in users %}
-                <s:acl>
-                    <s:username>{{ user[0] }}</s:username>
-                    <s:perm>{{ user[1] }}</s:perm>
-                </s:acl>
-                {% endfor %}
-                {% for group in groups %}
-                <s:acl>
-                    <s:group>{{ group }}</s:group>
-                    <s:perm>{{ group[1] }}</s:perm>
-                </s:acl>
-                {% endfor %}
-            </s:sandbox>
-        """.strip())
-    return template.render(**locals())
+        Parameters
+        ----------
+        from_path : str
+            The original path of object.
+        to_path : str
+            The destination path of object.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
 
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
 
-def render_delta(folder, cursor):
-    if cursor:
-        cursor = "%X" % cursor
-    template = Template("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <s:delta xmlns:s="http://ns.jianguoyun.com">
-                <s:folderName>{{ folder }}</s:folderName>
-                {% if cursor %}<s:cursor>{{ cursor }}</s:cursor>{% endif %}
-            </s:delta>
-        """.strip())
-    return template.render(**locals())
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
 
+    def cp(self, from_path, to_path, auth_tuple=None, client=None):
+        """
+        Copy a file or directory.
 
-def render_latestDeltaCursor(folder):
-    template = Template("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <s:delta xmlns:s="http://ns.jianguoyun.com">
-                <s:folderName>{{ folder }}</s:folderName>
-            </s:delta>
-        """.strip())
-    return template.render(**locals())
+        Parameters
+        ----------
+        from_path : str
+            The original path of object.
+        to_path : str
+            The destination path of object.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
 
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
 
-def render_submitCopyPubObject(path, url, password):
-    template = Template("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <s:copy_pub xmlns:s="http://ns.jianguoyun.com">
-                <s:href>{{ path }}</s:href>
-                <s:published_object_url>{{ url }}</s:published_object_url>
-                {% if password %}<s:copy_password>{{ password }}</s:copy_password>{% endif %}
-            </s:copy_pub>
-        """.strip())
-    return template.render(**locals())
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
 
+    def rm(self, path, auth_tuple=None, client=None):
+        """
+        Remove a file or directory.
 
-def render_pollCopyPubObject(copy_uuid):
-    template = Template("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <s:copy_pub xmlns:s="http://ns.jianguoyun.com">
-                <s:copy_uuid>{{ copy_uuid }}</s:copy_uuid>
-            </s:copy_pub>
-        """.strip())
-    return template.render(**locals())
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as ``/path/to/directory/object``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
 
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
 
-def render_search(keywords, path):
-    keywords = " ".join(keywords)
-    template = Template("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <s:search xmlns:s="http://ns.jianguoyun.com">
-                <s:keywords>{{ keywords }}</s:keywords>
-                <s:path>{{ path }}</s:path>
-            </s:search>
-        """.strip())
-    return template.render(**locals())
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
 
+    def share(self, path, users=None, groups=None, downloadable=True, auth_tuple=None, client=None):
+        """
+        Get the share link of given object.
 
-def render_directContentUrl(path, platform, link_type):
-    template = Template("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <s:direct_content_link xmlns:s="http://ns.jianguoyun.com">
-                <s:href>{{ path }}</s:href>
-                <s:platform>{{ platform }}</s:platform>
-                <s:link_type>{{ link_type }}</s:link_type>
-            </s:direct_content_link>
-        """.strip())
-    return template.render(**locals())
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as ``/path/to/directory/object``
+        users : list
+            A list contains which users to share as :obj:`str`. :obj:`None` means everyone.
+        groups : list
+            A list contains which groups to share as :obj:`str` or :obj:`int`. :obj:`None` means every group.
+        downloadable : bool
+            If it can be downloaded.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
 
+        Returns
+        -------
+        str
+            Share link.
 
-def render_directPubContentUrl(link, platform, link_type, relative_path, password):
-    template = Template("""
-            <?xml version="1.0" encoding="utf-8"?>
-            <s:direct_content_link xmlns:s="http://ns.jianguoyun.com">
-                <s:href>{{ link }}</s:href>
-                <s:platform>{{ platform }}</s:platform>
-                <s:link_type>{{ link_type }}</s:link_type>
-                {% if relative_path %}<s:relative_path>{{ relative_path }}</s:relative_path>{% endif %}
-                {% if password %}<s:password>{{ password }}</s:password>{% endif %}
-            </s:direct_content_link>
-        """.strip())
-    return template.render(**locals())
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
 
+    def get_acl(self, path, auth_tuple=None, client=None):
+        """
+        Get the privilege configuration of given object.
 
-render_func = {
-    "pubObject": render_pubObject,
-    "getSandboxAcl": render_getSandboxAcl,
-    "updateSandboxAcl": render_updateSandboxAcl,
-    "delta": render_delta,
-    "latestDeltaCursor": render_latestDeltaCursor,
-    "submitCopyPubObject": render_submitCopyPubObject,
-    "pollCopyPubObject": render_pollCopyPubObject,
-    "search": render_search,
-    "directContentUrl": render_directContentUrl,
-    "directPubContentUrl": render_directPubContentUrl
-}
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as ``/path/to/directory/object``
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.Entity`
+            Contains the following values:
+
+            ========== ================== ==========================================================
+            Key        Type               Description
+            ---------- ------------------ ----------------------------------------------------------
+            users      :class:`.Entity`   Contains the following values:
+
+                                          ============================ ===== =============================
+                                          Key                          Type  Description
+                                          ---------------------------- ----- -----------------------------
+                                          Depend on user's user name   str   The permission of this user.
+                                          ============================ ===== =============================
+            groups     :class:`.Entity`   Contains the following values:
+
+                                          ========================== ====== =============================
+                                          Key                        Type   Description
+                                          -------------------------- ------ -----------------------------
+                                          Depend on group's group id str    The permission of this group.
+                                          ========================== ====== =============================
+            ========== ================== ==========================================================
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def set_acl(self, path, users=None, groups=None, auth_tuple=None, client=None):
+        """
+        Set the privilege configuration of given object.
+
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as ``/path/to/directory/object``
+        users : list
+            A list of tuples. Each tuple contains ``(user_name, perm)``. ``perm`` should be one of :obj:`.PERM_MAP`.
+        groups : list
+            A list of tuples. Each tuple contains ``(group_id, perm)``. ``perm`` should be one of :obj:`.PERM_MAP`.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def get_history(self, folder, cursor=None, auth_tuple=None, client=None):
+        """
+        Get the history of given top folder.
+
+        Parameters
+        ----------
+        folder : str
+            The top folder.
+        cursor : int
+            The cursor of history in :obj:`int`. Will return the histories after cursor.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.Entity`
+            Contains the following values:
+
+            ====================== ======================== =================================
+            Key                    Type                     Description
+            ---------------------- ------------------------ ---------------------------------
+            reset                  bool                     If histories are continuous,
+                                                            If is :obj:`False`,
+                                                            all histories should be ignored and post again.
+                                                            :obj:`False` may caused by
+                                                            remote internal server error.
+            cursor                 int                      Cursor of the last history.
+            has_more               bool                     If histories are complete or there are more histories.
+                                                            If :obj:`True`, you can call ``get_history``
+                                                            with ``cursor`` to get the histories from ``cursor``.
+            deltas                 list                     A list contains :class:`.Entity` with the following values:
+
+                                                            ========== ====== ==================
+                                                            Key        Type   Description
+                                                            ---------- ------ ------------------
+                                                            path       str    The path of this item.
+                                                            size       int    The size of this item represented in
+                                                                              bytes.
+                                                            is_deleted bool   If this operation is deletion.
+                                                            is_dir     bool   If this item is a directory.
+                                                            modified   float  The date of this operation in Unix
+                                                                              timestamp.
+                                                            revision   int    Which revision of this operation.
+                                                            ========== ====== ==================
+            ====================== ======================== =================================
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def get_latest_cursor(self, folder, auth_tuple=None, client=None):
+        """
+        Get the latest history cursor.
+
+        Parameters
+        ----------
+        folder : str
+            The top folder.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        int
+            Latest cursor.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def cp_shared_object(self, path, url, password=None, auth_tuple=None, client=None):
+        """
+        Submit background copying a shared object to given path.
+
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as :code:`/path/to/directory/object`.
+        url : str
+            The url of shared object.
+        password : str
+            The password of this shared object, ignore if there isn't password.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            The uuid of this copy operation, used to query operation status later.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def poll_cp(self, copy_uuid, auth_tuple=None, client=None):
+        """
+        Query the state of background copy operation.
+
+        Parameters
+        ----------
+        copy_uuid : str
+            The uuid returned from :meth:`.cp_shared_object`.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            "In process" or "Complete".
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def search(self, keywords, path, auth_tuple=None, client=None):
+        """
+        Use keywords to search files.
+
+        Parameters
+        ----------
+        keywords : list
+            A list of keywords in str. Each keyword should be at least two length.
+        path : str
+            The absolute path to search. It can be an empty string to search every place.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        list
+            A list contains :class:`.Entity` with the following values:
+
+            ============= =================== ========================
+            Key           Type                Description
+            ------------- ------------------- ------------------------
+            href          str                 The absolute path of
+                                              this object.
+            is_dir        bool                If this object is a directory.
+            last_modified float               The last time this item was modified in Unix timestamp.
+            mime_type     str                 The mime type of this object.
+            owner         str                 The owner of this object.
+            ============= =================== ========================
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def get_content_url(self, path, platform="desktop", link_type="download", auth_tuple=None, client=None):
+        """
+        Get url of given object.
+
+        Parameters
+        ----------
+        path : str
+            The absolute path of object such as :code:`/path/to/directory/object`.
+        platform : str
+            The platform type of returned object, "desktop" or "mobile".
+        link_type : str
+            The link type of returned object, "download" or "preview".
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            url of object.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def get_shared_content_url(self, link, platform="desktop", link_type="download", relative_path=None,
+                                     password=None, auth_tuple=None, client=None):
+        """
+        Get url of given shared object.
+
+        Parameters
+        ----------
+        link : str
+            The share link of object.
+        platform : str
+            The platform type of returned object, "desktop" or "mobile".
+        link_type : str
+            The link type of returned object, "download" or "preview".
+        relative_path : str
+            The relative path of given object. For example, given a directory contains "A.txt" and "b.txt",
+            relative path as ``/A.txt`` will get the url of "A.txt".
+        password : str
+            The password of this shared object, ignore if there isn't password.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        str
+            url of object.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def get_user_info(self, auth_tuple=None, client=None):
+        """
+        Get user's information.
+
+        Parameters
+        ----------
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.Entity`
+            Contains the following values:
+
+            =============== ====================== =========================
+            Key             Type                   Description
+            --------------- ---------------------- -------------------------
+            user_name       str                    The user name.
+            is_admin        bool                   If this user is the admin of this team.
+            state           str                    The account state of user. Could be:
+
+                                                   - "free"
+                                                   - "standard_pro_edition"
+                                                   - "advanced_pro_edition"
+                                                   - "free_trial_team_edition"
+                                                   - "advanced_team_edition"
+                                                   - "preminum_team_edition"
+                                                   - "standard_team_edition"
+                                                   - "frozen"
+            team_id         int                    The team id of user. :obj:`None` if state equals to "frozen".
+            storage_quota   int                    The total storage quota in bytes.
+                                                   :obj:`None` if state equals to "frozen".
+            used_storage    int                    The used storage space in bytes.
+                                                   :obj:`None` if state equals to "frozen".
+            expire_time     float                  The expire time in Unix timestamp.
+                                                   :obj:`None` if state equals to "frozen".
+            collections     list                   A list contains :class:`.Entity` with the following values:
+
+                                                   ============= =================== ========================
+                                                   Key           Type                Description
+                                                   ------------- ------------------- ------------------------
+                                                   href          str                 The absolute path of
+                                                                                     this top folder.
+                                                   used_storage  int                 The used storage space in bytes
+                                                                                     of this top folder.
+                                                   owner         bool                If user is the owner of
+                                                                                     this top folder.
+                                                   ============= =================== ========================
+            =============== ====================== =========================
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def update_team_info(self, name, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Update team's info.
+
+        Currently only support updating name.
+
+        Parameters
+        ----------
+        name : str
+            New name
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def get_team_members(self, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Get all members in this team.
+
+        Parameters
+        ----------
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :obj:`list`
+            A list contains :class:`.Entity` with the following values.
+
+            ============== ================= =======================================
+            Key            Type              Description
+            -------------- ----------------- ---------------------------------------
+            user_name      str               The user name of this member.
+            admin          bool              If this member is admin.
+            nickname       str               The nickname of this member
+            storage_quota  int               The storage quotas in bytes.
+            ldap_user      bool              If this member is managed by ldap.
+                                             :obj:`None` in old version.
+            disabled       bool              If this member is disabled.
+                                             :obj:`None` in old version.
+            ============== ================= =======================================
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def create_team_member(self, users, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Create new members for given team.
+
+        Parameters
+        ----------
+        users : :obj:`list`
+            A list contains all users. Each user should be a :obj:`dict` which contains the following values:
+
+            ============== ================= =======================================
+            Key            Type              Description
+            -------------- ----------------- ---------------------------------------
+            user_name      str               The user name of this member.
+            password       str               The password of this member.
+            storage_quota  int               The storage quotas in bytes.
+            ldap_user      bool optional     If this member is managed by ldap.
+            ldap_id        str optional      The id of this member in ldap.
+            ============== ================= =======================================
+
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def update_team_member_storage_quota(self, user_name, storage_quota, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Update team member's storage quota.
+
+        Parameters
+        ----------
+        user_name : str
+            The user's name.
+        storage_quota : int or str
+            The new storage quota in bytes.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def get_team_member_info(self, user_name, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Get the info of a team member.
+
+        Parameters
+        ----------
+        user_name : str
+            The user's name.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.Entity`
+            Contains the following values:
+
+            ============== ================= =======================================
+            Key            Type              Description
+            -------------- ----------------- ---------------------------------------
+            user_name      str               The user name of this member.
+            storage_quota  int               The storage quotas in bytes.
+            expire_time    float             The expire time in Unix timestamp.
+            sandboxes      list              A list contains :class:`.Entity` with the following values:
+
+                                             ============= =================== ========================
+                                             Key           Type                Description
+                                             ------------- ------------------- ------------------------
+                                             name          str                 The name of this sandbox.
+                                             storage_quota int                 The storage quotas in bytes.
+                                             ============= =================== ========================
+            ============== ================= =======================================
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def remove_team_member(self, user_name, folder_receipt, clean_perms=False, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Remove a member from team.
+
+        Parameters
+        ----------
+        user_name : str
+            The user's name.
+        folder_receipt : str
+            The user name of receiver.
+        clean_perms : bool
+            If delete all shared folders, if ``True``, ``folder_receipt`` will be ignored.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def get_group_members(self, group_id, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Get the subgroups and users in a given group.
+
+        Parameters
+        ----------
+        group_id : str or int
+            The group id.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.Entity`
+            Contains the following values:
+
+            ============== ================= =======================================
+            Key            Type              Description
+            -------------- ----------------- ---------------------------------------
+            subgroups      list              A list contains :class:`.Entity` with the following values:
+
+                                             ============= =================== ============================
+                                             Key           Type                Description
+                                             ------------- ------------------- ----------------------------
+                                             group_id      int                 The id of this subgroup.
+                                             name          str                 The name of this subgroup.
+                                             ============= =================== ============================
+            admins         list              A list contains :class:`.Entity` with the following values:
+
+                                             ============= =================== ============================
+                                             Key           Type                Description
+                                             ------------- ------------------- ----------------------------
+                                             username      str                 The user name of this user.
+                                             nickname      str                 The nickname of this user.
+                                             ============= =================== ============================
+            users          list              A list contains :class:`.Entity` with the following values:
+
+                                             ============= =================== ============================
+                                             Key           Type                Description
+                                             ------------- ------------------- ----------------------------
+                                             username      str                 The user name of this user.
+                                             nickname      str                 The nickname of this user.
+                                             ============= =================== ============================
+            ============== ================= =======================================
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def create_group(self, parent_group_id, name, admins, users=None, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Create a group.
+
+        Parameters
+        ----------
+        parent_group_id : str or int
+            The group id of parent group.
+        name : str
+            The name of this group.
+        admins : list
+            A list contains all admins' user name.
+        users : list
+            A list contains all members' user name except for admins.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        int
+            The group id of created group.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def add_member_to_group(self, group_id, users, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Add members to a given group.
+
+        Parameters
+        ----------
+        group_id : str
+            The group id of given group.
+        users : list
+            A list contains all members' user name.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def remove_member_from_group(self, group_id, users=None, subgroups=None, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Remove members or subgroups from a given group.
+
+        Parameters
+        ----------
+        group_id : str
+            The group id of given group.
+        users : list
+            A list contains all members' user name.
+        subgroups : list
+            A list contains all subgroups' group id.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def dismiss_team(self, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Dismiss current team.
+
+        Parameters
+        ----------
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def update_team_member_status(self, users, auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Update team member's status.
+
+        Parameters
+        ----------
+        users : :obj:`dict`
+            A dict contains user's user name as key while if disabled(bool) as value.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        bool
+            Return :obj:`True` or raise exception.
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, message and detail.
+        """
+        raise NotImplementedError
+
+    def query_audit_logs(self, time_start, time_end, user_name=None, op_type=None, file_name=None,
+                               auth_tuple=None, client=None):
+        """
+        Only for admin access token.
+
+        Query audit logs.
+
+        Parameters
+        ----------
+        time_start : float
+            The start time in Unix timestamp.
+        time_end : float
+            The end time in Unix timestamp.
+        user_name : str
+            The user name of a given user.
+        op_type : str
+            The operation type. Should be one of :obj:`.OPERATION_TYPE`.
+        file_name : str
+            The file name.
+        auth_tuple : tuple
+            The auth_tuple overriding global config.
+        client : :class:`aiohttp.ClientSession`
+            The client overriding global config.
+
+        Returns
+        -------
+        :class:`.Entity`
+            Contains the following values:
+
+            ===================== ================= =======================================
+            Key                   Type              Description
+            --------------------- ----------------- ---------------------------------------
+            log_num               int               The number of logs.
+            first_operation_time  float             The Unix timestamp of first operation in logs.
+            last_operation_time   float             The Unix timestamp of last operation in logs.
+            has_more              bool              If there are more logs.
+            activities            list              A list contains :class:`.Entity` with the following values:
+
+                                                    ============= =================== ============================
+                                                    Key           Type                Description
+                                                    ------------- ------------------- ----------------------------
+                                                    operator      str                 The user name of this operation.
+                                                    operation     str                 The type of this operation.
+                                                    ip            str                 The ip of this operation.
+                                                    ip_location   str                 The location of this ip.
+                                                    terminal      str                 The terminal of this operation.
+                                                    consuming     str                 How much time does this operation cost.
+                                                    ============= =================== ============================
+            ===================== ================= =======================================
+
+        Raises
+        ------
+        :exc:`.NSWebDavHTTPError`
+            Contains HTTP error code, exception and message.
+        """
+        raise NotImplementedError

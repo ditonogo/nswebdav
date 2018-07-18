@@ -1,10 +1,10 @@
-from urllib.parse import urljoin, unquote
+from urllib.parse import urljoin
 
 import requests
-from lxml import etree
 
-from nswebdav.base import NutstoreDavBase, ItemList, History, User
+from nswebdav.base import NutstoreDavBase
 from nswebdav.exceptions import NSWebDavHTTPError
+from nswebdav.parse import *
 
 
 class NutstoreDav(NutstoreDavBase):
@@ -17,6 +17,7 @@ class NutstoreDav(NutstoreDavBase):
     There is a default client :class:`requests.Session`, but you can still overwrite it by calling :meth:`.config`
     or passing a custom one in every methods.
     """
+
     def __init__(self, base_url="https://dav.jianguoyun.com", dav_url="/dav", operation_url="/nsdav"):
         super().__init__(base_url, dav_url, operation_url)
         self._client = requests.Session()
@@ -28,57 +29,13 @@ class NutstoreDav(NutstoreDavBase):
         self._client.close()
 
     def ls(self, path, auth_tuple=None, client=None):
-        """
-        List the items under given path.
-
-        Parameters
-        ----------
-        path : str
-            The absolute path of object such as ``/path/to/directory/object``
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        :class:`.ItemList`
-            A list-like object contains items.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_dav_request("PROPFIND", auth_tuple, client, path=path)
 
         if response.status_code == 207:
-            return ItemList(response.content)
+            return parse_ls(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def mkdir(self, path, auth_tuple=None, client=None):
-        """
-        Create a directory to given path.
-
-        Parameters
-        ----------
-        path : str
-            The absolute path of object such as ``/path/to/directory/object``
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        bool
-            Return :obj:`True` or raise exception.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_dav_request("MKCOL", auth_tuple, client, path=path)
 
         if response.status_code == 201:
@@ -86,30 +43,6 @@ class NutstoreDav(NutstoreDavBase):
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def upload(self, content, path, auth_tuple=None, client=None):
-        """
-        Upload an object to given path.
-
-        Parameters
-        ----------
-        content : bytes
-            The bytes of uploaded object.
-        path : str
-            The absolute path of object such as ``/path/to/directory/object``
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        str
-            "Upload" or "Overwrite".
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_dav_request("PUT", auth_tuple, client, path=path, data=content)
 
         if response.status_code == 201:
@@ -119,28 +52,6 @@ class NutstoreDav(NutstoreDavBase):
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def download(self, path, auth_tuple=None, client=None):
-        """
-        Download an object from given path.
-
-        Parameters
-        ----------
-        path : str
-            The absolute path of object such as ``/path/to/directory/object``
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        bytes
-            The bytes of object.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_dav_request("GET", auth_tuple, client, path=path)
 
         if response.status_code == 200:
@@ -148,30 +59,6 @@ class NutstoreDav(NutstoreDavBase):
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def mv(self, from_path, to_path, auth_tuple=None, client=None):
-        """
-        Move or rename a file or directory.
-
-        Parameters
-        ----------
-        from_path : str
-            The original path of object.
-        to_path : str
-            The destination path of object.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        bool
-            Return :obj:`True` or raise exception.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_dav_request("MOVE", auth_tuple, client, from_path=from_path, to_path=to_path)
 
         if response.status_code == 201:
@@ -179,30 +66,6 @@ class NutstoreDav(NutstoreDavBase):
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def cp(self, from_path, to_path, auth_tuple=None, client=None):
-        """
-        Copy a file or directory.
-
-        Parameters
-        ----------
-        from_path : str
-            The original path of object.
-        to_path : str
-            The destination path of object.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        bool
-            Return :obj:`True` or raise exception.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_dav_request("COPY", auth_tuple, client, from_path=from_path, to_path=to_path)
 
         if response.status_code == 201:
@@ -210,28 +73,6 @@ class NutstoreDav(NutstoreDavBase):
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def rm(self, path, auth_tuple=None, client=None):
-        """
-        Remove a file or directory.
-
-        Parameters
-        ----------
-        path : str
-            The absolute path of object such as ``/path/to/directory/object``
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        bool
-            Return :obj:`True` or raise exception.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_dav_request("DELETE", auth_tuple, client, path=path)
 
         if response.status_code == 204:
@@ -239,117 +80,25 @@ class NutstoreDav(NutstoreDavBase):
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def share(self, path, users=None, groups=None, downloadable=True, auth_tuple=None, client=None):
-        """
-        Get the share link of given object.
-
-        Parameters
-        ----------
-        path : str
-            The absolute path of object such as ``/path/to/directory/object``
-        users : list
-            A list contains which users to share as :obj:`str`. :obj:`None` means everyone.
-        groups : list
-            A list contains which groups to share as :obj:`str` or :obj:`int`. :obj:`None` means every group.
-        downloadable : bool
-            If it can be downloaded.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        str
-            Share link.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         path = self._dav_url + path
         response = self._perform_operation_request("pubObject", auth_tuple, client,
                                                    path=path, users=users, groups=groups,
                                                    downloadable=downloadable)
 
         if response.status_code == 200:
-            t = etree.fromstring(response.content)
-            share_link = t.find("s:sharelink", t.nsmap).text.strip()
-            return share_link
+            return parse_share_link(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_acl(self, path, auth_tuple=None, client=None):
-        """
-        Get the privilege configuration of given object.
-
-        Parameters
-        ----------
-        path : str
-            The absolute path of object such as ``/path/to/directory/object``
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        dict
-            Contains two :obj:`dict` "users" and "groups".
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         path = self._dav_url + path
         response = self._perform_operation_request("getSandboxAcl", auth_tuple, client,
                                                    path=path)
 
         if response.status_code == 200:
-            t = etree.fromstring(response.content)
-            results = {
-                "users": {},
-                "groups": {}
-            }
-            acls = t.findall("s:acl", t.nsmap)
-            for acl in acls:
-                user = acl.find("s:username", t.nsmap)
-                perm = acl.find("s:perm", t.nsmap)
-                if user is not None:
-                    results["users"][user.text] = perm.text
-                else:
-                    group = acl.find("s:group", t.nsmap)
-                    results["groups"][group.text] = perm.text
-            return results
+            return parse_acl(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def set_acl(self, path, users=None, groups=None, auth_tuple=None, client=None):
-        """
-        Set the privilege configuration of given object.
-
-        Parameters
-        ----------
-        path : str
-            The absolute path of object such as ``/path/to/directory/object``
-        users : list
-            A list of tuples. Each tuple contains :code:`(user_name, perm)`.
-        groups : list
-            A list of tuples. Each tuple contains :code:`(group_id, perm)`.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        bool
-            Return :obj:`True` or raise exception.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         path = self._dav_url + path
         response = self._perform_operation_request("updateSandboxAcl", auth_tuple, client,
                                                    path=path, users=users, groups=groups)
@@ -359,124 +108,28 @@ class NutstoreDav(NutstoreDavBase):
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_history(self, folder, cursor=None, auth_tuple=None, client=None):
-        """
-        Get the history of given top folder.
-
-        Parameters
-        ----------
-        folder : str
-            The top folder.
-        cursor : int
-            The cursor of history in :obj:`int`. Will return the histories after cursor.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        :class:`.History`
-            A list-like object contains history item.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_operation_request("delta", auth_tuple, client,
                                                    folder=folder, cursor=cursor)
         if response.status_code == 200:
-            return History(response.content)
+            return parse_history(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_latest_cursor(self, folder, auth_tuple=None, client=None):
-        """
-        Get the latest history cursor.
-
-        Parameters
-        ----------
-        folder : str
-            The top folder.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        int
-            Latest cursor.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_operation_request("latestDeltaCursor", auth_tuple, client,
                                                    folder=folder)
         if response.status_code == 200:
-            t = etree.fromstring(response.content)
-            return int(t.find("s:cursor", t.nsmap).text, 16)
+            return parse_latest_cursor(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def cp_shared_object(self, path, url, password=None, auth_tuple=None, client=None):
-        """
-        Submit copying a shared object to given path.
-
-        Parameters
-        ----------
-        path : str
-            The absolute path of object such as :code:`/path/to/directory/object`.
-        url : str
-            The url of shared object.
-        password : str
-            The password of this shared object, ignore if there isn't password.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        str
-            The uuid of this copy operation, used to query operation status later.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_operation_request("submitCopyPubObject", auth_tuple, client,
                                                    path=path, url=url, password=password)
 
         if response.status_code == 201:
-            t = etree.fromstring(response.content)
-            return t.find("s:copy_uuid", t.nsmap).text
+            return parse_cp_shared_object(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def poll_cp(self, copy_uuid, auth_tuple=None, client=None):
-        """
-        Query the state of background copy operation.
-
-        Parameters
-        ----------
-        copy_uuid : str
-            The uuid returned from :meth:`.cp_shared_object`.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        str
-            "In process" or "Complete".
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_operation_request("pollCopyPubObject", auth_tuple, client,
                                                    copy_uuid=copy_uuid)
 
@@ -487,137 +140,32 @@ class NutstoreDav(NutstoreDavBase):
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def search(self, keywords, path, auth_tuple=None, client=None):
-        """
-        Use keywords to search files.
-
-        Parameters
-        ----------
-        keywords : list
-            A list of keywords in str. Each keyword should be at least two length.
-        path : str
-            The absolute path to search. It can be an empty string to search every place.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        :class:`.ItemList`
-            A list-like object contains items.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         if path:
             path = self._dav_url + path
         response = self._perform_operation_request("search", auth_tuple, client,
                                                    keywords=keywords, path=path)
         if response.status_code == 207:
-            return ItemList(response.content, False)
+            return parse_search(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_content_url(self, path, platform="desktop", link_type="download", auth_tuple=None, client=None):
-        """
-        Get url of given object.
-
-        Parameters
-        ----------
-        path : str
-            The absolute path of object such as :code:`/path/to/directory/object`.
-        platform : str
-            The platform type of returned object, "desktop" or "mobile".
-        link_type : str
-            The link type of returned object, "download" or "preview".
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        str
-            url of object.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         path = self._dav_url + path
         response = self._perform_operation_request("directContentUrl", auth_tuple, client,
                                                    path=path, platform=platform, link_type=link_type)
         if response.status_code == 200:
-            t = etree.fromstring(response.content)
-            href = unquote(t.find("s:href", t.nsmap).text)
-            return href
+            return parse_content_url(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_shared_content_url(self, link, platform="desktop", link_type="download", relative_path=None,
                                password=None, auth_tuple=None, client=None):
-        """
-        Get url of given shared object.
-
-        Parameters
-        ----------
-        link : str
-            The share link of object.
-        platform : str
-            The platform type of returned object, "desktop" or "mobile".
-        link_type : str
-            The link type of returned object, "download" or "preview".
-        relative_path : str
-            The relative path of given object. For example, given a directory contains "A.txt" and "b.txt",
-            relative path as ``/A.txt`` will get the url of "A.txt".
-        password : str
-            The password of this shared object, ignore if there isn't password.
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        str
-            url of object.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         response = self._perform_operation_request("directPubContentUrl", auth_tuple, client,
                                                    link=link, platform=platform, link_type=link_type,
                                                    relative_path=relative_path, password=password)
         if response.status_code == 200:
-            t = etree.fromstring(response.content)
-            href = unquote(t.find("s:href", t.nsmap).text)
-            return href
+            return parse_content_url(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
 
     def get_user_info(self, auth_tuple=None, client=None):
-        """
-        Get user's information.
-
-        Parameters
-        ----------
-        auth_tuple : tuple
-            The auth_tuple overriding global config.
-        client : :class:`requests.Session`
-            The client overriding global config.
-
-        Returns
-        -------
-        :class:`.User`
-            An object contains user's information.
-
-        Raises
-        ------
-        :exc:`.NSWebDavHTTPError`
-            Contains HTTP error code, message and detail.
-        """
         auth_tuple = self._get_auth_tuple(auth_tuple)
         client = self._get_client(client)
 
@@ -626,5 +174,110 @@ class NutstoreDav(NutstoreDavBase):
         response = client.request("GET", url, auth=auth_tuple)
 
         if response.status_code == 200:
-            return User(response.content)
+            return parse_user_info(response.content)
         raise NSWebDavHTTPError(response.status_code, response.content)
+
+    def update_team_info(self, name, auth_tuple=None, client=None):
+        response = self._perform_operation_request("updateTeamInfo", auth_tuple, client, name=name)
+
+        if response.status_code == 204:
+            return True
+        raise NSWebDavHTTPError(response.status_code, response.content)
+
+    def get_team_members(self, auth_tuple=None, client=None):
+        auth_tuple = self._get_auth_tuple(auth_tuple)
+        client = self._get_client(client)
+
+        root_url = urljoin(self._base_url, self._operation_url)
+        url = root_url + "/getTeamMembers"
+        response = client.request("GET", url, auth=auth_tuple)
+
+        if response.status_code == 200:
+            return parse_team_members(response.content)
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def create_team_member(self, users, auth_tuple=None, client=None):
+        response = self._perform_operation_request("createEtpTeamMember", auth_tuple, client,
+                                                   users=users)
+        if response.status_code == 204:
+            return True
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def update_team_member_storage_quota(self, user_name, storage_quota, auth_tuple=None, client=None):
+        response = self._perform_operation_request("updateTeamMemberStorageQuota", auth_tuple, client,
+                                                   user_name=user_name, storage_quota=storage_quota)
+        if response.status_code == 204:
+            return True
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def get_team_member_info(self, user_name, auth_tuple=None, client=None):
+        response = self._perform_operation_request("getTeamMemberInfo", auth_tuple, client,
+                                                   user_name=user_name)
+        if response.status_code == 200:
+            return parse_team_member_info(response.content())
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def remove_team_member(self, user_name, folder_receipt, clean_perms=False, auth_tuple=None, client=None):
+        response = self._perform_operation_request("removeTeamMember", auth_tuple, client,
+                                                   user_name=user_name, folder_receipt=folder_receipt,
+                                                   clean_perms=clean_perms)
+        if response.status_code == 204:
+            return True
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def get_group_members(self, group_id, auth_tuple=None, client=None):
+        response = self._perform_operation_request("getGroupMembers", auth_tuple, client,
+                                                   group_id=group_id)
+        if response.status_code == 200:
+            return parse_group_members(response.content())
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def create_group(self, parent_group_id, name, admins, users=None, auth_tuple=None, client=None):
+        response = self._perform_operation_request("createGroup", auth_tuple, client,
+                                                   parent_group_id=parent_group_id, name=name, admins=admins,
+                                                   users=users)
+        if response.status_code == 200:
+            return parse_created_group(response.content())
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def add_member_to_group(self, group_id, users, auth_tuple=None, client=None):
+        response = self._perform_operation_request("addMemberToGroup", auth_tuple, client,
+                                                   group_id=group_id, users=users)
+        if response.status_code == 204:
+            return True
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def remove_member_from_group(self, group_id, users=None, subgroups=None, auth_tuple=None, client=None):
+        response = self._perform_operation_request("removeMemberFromGroup", auth_tuple, client,
+                                                   group_id=group_id, users=users, subgroups=subgroups)
+        if response.status_code == 204:
+            return True
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def dismiss_team(self, auth_tuple=None, client=None):
+        auth_tuple = self._get_auth_tuple(auth_tuple)
+        client = self._get_client(client)
+
+        root_url = urljoin(self._base_url, self._operation_url)
+        url = root_url + "/dismissTeam"
+        response = client.request("POST", url, auth=auth_tuple)
+
+        if response.status_code == 204:
+            return True
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def update_team_member_status(self, users, auth_tuple=None, client=None):
+        response = self._perform_operation_request("updateTeamMemberStatus", auth_tuple, client,
+                                                   users=users)
+        if response.status_code == 204:
+            return True
+        raise NSWebDavHTTPError(response.status_code, response.content())
+
+    def query_audit_logs(self, time_start, time_end, user_name=None, op_type=None, file_name=None,
+                         auth_tuple=None, client=None):
+        response = self._perform_operation_request("queryAuditLogs", auth_tuple, client,
+                                                   time_start=time_start, time_end=time_end, user_name=user_name,
+                                                   op_type=op_type, file_name=file_name)
+        if response.status_code == 200:
+            return parse_audit_logs(response.content())
+        raise NSWebDavHTTPError(response.status_code, response.content())

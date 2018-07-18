@@ -10,11 +10,15 @@ It implements easy-to-use high-level interface and support both sync version and
 While using async version, package can only run on python3.5 or above 
 as it uses new key words `async` and `await` for async support.
 
-To install it:
+To install sync version:
 
-`pip install nswebdav`
+`pip install nswebdav[sync]`
 
-Here is [documentation](http://nswebdav.readthedocs.io/en/stable/ "Documentation for nswebdav").
+To install async version:
+
+`pip install nswebdav[async]`
+
+Here is the [documentation](http://nswebdav.readthedocs.io/en/stable/ "Documentation for nswebdav").
 
 # Support
 
