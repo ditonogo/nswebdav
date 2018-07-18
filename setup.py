@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+from nswebdav import __version__
 
 try:
     import pypandoc
@@ -9,14 +10,14 @@ except(IOError, ImportError):
 setup(
     name='nswebdav',
     packages=find_packages(),
-    version='1.1.0',
+    version=__version__,
     license='MIT',
     description='A python implementation for nutstore(jianguoyun) webdav',
     long_description=long_description,
     author='Sraw',
     author_email='lzyl888@gmail.com',
     url='https://github.com/Sraw/nswebdav',
-    download_url='https://github.com/Sraw/nswebdav/tarball/1.1.0',
+    download_url='https://github.com/Sraw/nswebdav/tarball/%s' % __version__,
     keywords="nutstore webdav jianguoyun",
     classifiers=[
         'Development Status :: 4 - Beta',
