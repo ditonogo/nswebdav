@@ -613,7 +613,7 @@ class NutstoreDavBase:
         raise NotImplementedError
 
     def get_shared_content_url(self, link, platform="desktop", link_type="download", relative_path=None,
-                                     password=None, auth_tuple=None, client=None):
+                               password=None, auth_tuple=None, client=None):
         """
         Get url of given shared object.
 
@@ -694,7 +694,7 @@ class NutstoreDavBase:
                                                                                      this top folder.
                                                    used_storage  int                 The used storage space in bytes
                                                                                      of this top folder.
-                                                   owner         bool                If user is the owner of
+                                                   is_owner      bool                If user is the owner of
                                                                                      this top folder.
                                                    ============= =================== ========================
             =============== ====================== =========================
@@ -1116,7 +1116,7 @@ class NutstoreDavBase:
         raise NotImplementedError
 
     def query_audit_logs(self, time_start, time_end, user_name=None, op_type=None, file_name=None,
-                               auth_tuple=None, client=None):
+                         auth_tuple=None, client=None):
         """
         Only for admin access token.
 
